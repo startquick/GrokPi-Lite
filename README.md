@@ -15,7 +15,7 @@ This guide is focused on self-hosting on your own server or VPS.
 
 - Linux server or VPS (Ubuntu 22.04+ recommended)
 - Docker + Docker Compose plugin
-- Go 1.24+ and Node.js 20+ (required to build `bin/grokpi` for `Dockerfile.local`)
+- Go 1.24+ and Node.js 22+ (required to build `bin/grokpi` for `Dockerfile.local`)
 - `make` (optional but recommended)
 - At least 2 vCPU / 2 GB RAM for light usage
 - Open ports: `8080` (or reverse-proxy to 80/443)
@@ -65,10 +65,10 @@ sudo usermod -aG docker "$USER"
 newgrp docker
 ```
 
-5. Install Node.js 20 LTS:
+5. Install Node.js 22 LTS:
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 ```
 
@@ -136,10 +136,10 @@ sudo usermod -aG docker "$USER"
 newgrp docker
 ```
 
-5. Install Node.js 20 LTS:
+5. Install Node.js 22 LTS:
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 ```
 
@@ -167,7 +167,54 @@ make --version
 
 If Docker still needs `sudo` after step 4, log out and log in again.
 
-## 3. Quick Start (Docker Compose)
+## 3. Clone Project dari GitHub ke VPS
+
+Langkah ini dilakukan **sekali** saat pertama kali setup VPS.
+
+### 3.1 Generate SSH Key di VPS (jika belum ada)
+
+```bash
+ssh-keygen -t ed25519 -C "your_email@example.com"
+# Tekan Enter untuk semua prompt (atau isi passphrase jika diinginkan)
+cat ~/.ssh/id_ed25519.pub
+```
+
+Copy output public key tersebut, lalu tambahkan ke GitHub:
+**GitHub → Settings → SSH and GPG keys → New SSH key**
+
+### 3.2 Clone Repository
+
+Pastikan sudah login ke GitHub dan SSH key sudah ditambahkan, lalu:
+
+```bash
+# Buat direktori kerja
+mkdir -p ~/apps
+cd ~/apps
+
+# Clone via SSH (direkomendasikan untuk repo private)
+git clone git@github.com:startquick/groki-unlimited.git grokpi
+cd grokpi
+```
+
+Atau jika menggunakan HTTPS (butuh Personal Access Token jika repo private):
+
+```bash
+# Buat Personal Access Token di: GitHub → Settings → Developer settings → Personal access tokens
+git clone https://github.com/startquick/groki-unlimited.git grokpi
+cd grokpi
+# Masukkan username dan token saat diminta
+```
+
+### 3.3 Verifikasi Clone Berhasil
+
+```bash
+ls -la
+git log --oneline -3
+```
+
+Setelah clone berhasil, lanjut ke section berikutnya untuk build dan deploy.
+
+## 4. Quick Start (Docker Compose)
 
 ```bash
 cd grokpi
@@ -193,7 +240,7 @@ Open the browser:
 
 - `http://YOUR_SERVER_IP:8080/login`
 
-## 4. First-Time Setup in Admin Console
+## 5. First-Time Setup in Admin Console
 
 1. Sign in with `app_key`.
 2. Add upstream tokens in Token Management.
@@ -201,7 +248,7 @@ Open the browser:
 4. Call `/v1/models` using your new API key.
 5. Test chat/image/video requests.
 
-## 5. Minimal Config Example
+## 6. Minimal Config Example
 
 ```toml
 [app]
@@ -227,16 +274,16 @@ Important notes:
 - Keep `config.toml` private.
 - For public deployment, run behind TLS reverse proxy.
 
-## 6. API Examples
+## 7. API Examples
 
-### 6.1 List Models
+### 7.1 List Models
 
 ```bash
 curl -s http://127.0.0.1:8080/v1/models \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
-### 6.2 Chat Completion
+### 7.2 Chat Completion
 
 ```bash
 curl -s http://127.0.0.1:8080/v1/chat/completions \
@@ -250,7 +297,7 @@ curl -s http://127.0.0.1:8080/v1/chat/completions \
   }'
 ```
 
-### 6.3 Image Generation
+### 7.3 Image Generation
 
 ```bash
 curl -s http://127.0.0.1:8080/v1/chat/completions \
@@ -267,7 +314,7 @@ curl -s http://127.0.0.1:8080/v1/chat/completions \
   }'
 ```
 
-### 6.4 Video Generation
+### 7.4 Video Generation
 
 ```bash
 curl -s http://127.0.0.1:8080/v1/chat/completions \
@@ -287,7 +334,7 @@ curl -s http://127.0.0.1:8080/v1/chat/completions \
   }'
 ```
 
-## 7. VPS Production Checklist
+## 8. VPS Production Checklist
 
 - Use reverse proxy (Nginx/Caddy/Traefik) in front of Grokpi
 - Enable HTTPS (Let's Encrypt)
@@ -296,7 +343,7 @@ curl -s http://127.0.0.1:8080/v1/chat/completions \
 - Back up `data/` and `config.toml`
 - Monitor container logs and restart policies
 
-## 8. Updating Grokpi
+## 9. Updating Grokpi
 
 ```bash
 git pull
@@ -310,7 +357,7 @@ docker compose up -d --build
 curl -s http://127.0.0.1:8080/health
 ```
 
-## 9. Backup and Restore
+## 10. Backup and Restore
 
 Backup:
 
@@ -326,7 +373,7 @@ tar xzf grokpi-backup-YYYY-MM-DD.tar.gz
 docker compose up -d --build
 ```
 
-## 10. Common Issues
+## 11. Common Issues
 
 - `failed to solve ... "/bin/grokpi": not found` while `docker compose up --build`:
   - Build binary first (`make build` or manual commands in section 3).
