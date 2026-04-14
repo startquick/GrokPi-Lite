@@ -343,7 +343,124 @@ curl -s http://127.0.0.1:8080/v1/chat/completions \
 - Backup direktori `data/` dan file `config.toml`
 - Pantau log container dan atur restart policy
 
-## 9. Memperbarui Grokpi
+## 9. Konfigurasi Reverse Proxy dengan Domain
+
+Grokpi berjalan di `127.0.0.1:8080`. Agar bisa diakses via domain dengan HTTPS, gunakan reverse proxy di depannya.
+
+### 9.1 Menggunakan Nginx
+
+1. Instal Nginx dan Certbot:
+
+```bash
+sudo apt-get install -y nginx certbot python3-certbot-nginx
+```
+
+2. Buat file konfigurasi Nginx:
+
+```bash
+sudo nano /etc/nginx/sites-available/grokpi
+```
+
+Isi dengan konfigurasi berikut (ganti `api.domainanda.com`):
+
+```nginx
+server {
+    listen 80;
+    server_name api.domainanda.com;
+
+    location / {
+        proxy_pass         http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_set_header   Upgrade           $http_upgrade;
+        proxy_set_header   Connection        "upgrade";
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+}
+```
+
+3. Aktifkan konfigurasi dan muat ulang Nginx:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/grokpi /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+4. Pasang sertifikat TLS otomatis dengan Let's Encrypt:
+
+```bash
+sudo certbot --nginx -d api.domainanda.com
+```
+
+Certbot akan otomatis memperbarui konfigurasi Nginx dengan HTTPS. Setelah selesai, Grokpi dapat diakses via `https://api.domainanda.com`.
+
+### 9.2 Menggunakan Caddy (lebih mudah)
+
+Caddy menangani TLS secara otomatis tanpa perlu Certbot.
+
+1. Instal Caddy:
+
+```bash
+sudo apt-get install -y debian-keyring debian-archive-keyring apt-transport-https
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt-get update
+sudo apt-get install caddy
+```
+
+2. Edit Caddyfile:
+
+```bash
+sudo nano /etc/caddy/Caddyfile
+```
+
+Isi dengan konfigurasi berikut (ganti `api.domainanda.com`):
+
+```caddyfile
+api.domainanda.com {
+    reverse_proxy 127.0.0.1:8080 {
+        header_up X-Real-IP {remote_host}
+        transport http {
+            read_buffer  4096
+        }
+    }
+    # Perpanjang timeout untuk streaming dan video
+    request_body {
+        max_size 20MB
+    }
+    timeouts {
+        read_body   30s
+        read_header 10s
+        write        5m
+        idle         5m
+    }
+}
+```
+
+3. Muat ulang Caddy:
+
+```bash
+sudo systemctl reload caddy
+```
+
+Caddy akan otomatis mendapatkan dan memperbarui sertifikat TLS dari Let's Encrypt. Tidak perlu konfigurasi tambahan.
+
+### 9.3 Verifikasi
+
+```bash
+# Pastikan Grokpi merespons via domain
+curl -s https://api.domainanda.com/health
+
+# Cek sertifikat TLS
+curl -sv https://api.domainanda.com/health 2>&1 | grep -E 'SSL|subject|expire'
+```
+
+## 10. Memperbarui Grokpi
 
 ```bash
 git pull
@@ -351,13 +468,14 @@ git pull
 
 # Build ulang binary setelah pembaruan kode
 make build
-# Atau jalankan perintah build manual dari bagian 4
+# atau jalankan perintah build manual dari bagian 4
+
 
 docker compose up -d --build
 curl -s http://127.0.0.1:8080/health
 ```
 
-## 10. Backup dan Restore
+## 11. Backup dan Restore
 
 Backup:
 
@@ -373,7 +491,7 @@ tar xzf grokpi-backup-YYYY-MM-DD.tar.gz
 docker compose up -d --build
 ```
 
-## 11. Masalah Umum
+## 12. Masalah Umum
 
 - `failed to solve ... "/bin/grokpi": not found` saat `docker compose up --build`:
   - Build binary terlebih dahulu (`make build` atau perintah manual di bagian 4).
