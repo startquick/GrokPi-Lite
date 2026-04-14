@@ -1,48 +1,48 @@
-# Grokpi Self-Hosted Guide
+# Grokpi — Panduan Self-Hosted
 
-Grokpi is an OpenAI-compatible gateway for Grok chat, image, and video workloads.
-This guide is focused on self-hosting on your own server or VPS.
+Grokpi adalah gateway OpenAI-compatible untuk beban kerja chat, gambar, dan video menggunakan Grok.
+Panduan ini berfokus pada self-hosting di server atau VPS milik sendiri.
 
-## 1. What You Get
+## 1. Fitur Utama
 
-- OpenAI-compatible endpoints (`/v1/models`, `/v1/chat/completions`)
-- Admin console for token pools, API keys, usage, settings, and cache
-- Single Go binary with embedded web app
-- SQLite by default, optional PostgreSQL
-- Docker Compose deployment support
+- Endpoint OpenAI-compatible (`/v1/models`, `/v1/chat/completions`)
+- Admin console untuk token pool, API key, riwayat penggunaan, pengaturan, dan cache
+- Binary Go tunggal dengan web app yang sudah tertanam (embedded)
+- SQLite sebagai default, PostgreSQL sebagai opsi
+- Dukungan deployment via Docker Compose
 
-## 2. Requirements
+## 2. Kebutuhan Sistem
 
-- Linux server or VPS (Ubuntu 22.04+ recommended)
+- Server atau VPS Linux (Ubuntu 22.04+ direkomendasikan)
 - Docker + Docker Compose plugin
-- Go 1.24+ and Node.js 22+ (required to build `bin/grokpi` for `Dockerfile.local`)
-- `make` (optional but recommended)
-- At least 2 vCPU / 2 GB RAM for light usage
-- Open ports: `8080` (or reverse-proxy to 80/443)
+- Go 1.24+ dan Node.js 22+ (diperlukan untuk build `bin/grokpi` dari `Dockerfile.local`)
+- `make` (opsional tapi direkomendasikan)
+- Minimal 2 vCPU / 2 GB RAM untuk penggunaan ringan
+- Port terbuka: `8080` (atau gunakan reverse-proxy ke 80/443)
 
-Optional:
+Opsional:
 
-- Domain name + TLS certificate
-- FlareSolverr and proxy config (only if your upstream route requires it)
+- Domain name + sertifikat TLS
+- FlareSolverr dan konfigurasi proxy (hanya jika rute upstream memerlukannya)
 
-### 2.1 Full Prerequisite Install (Ubuntu 22.04/24.04)
+### 2.1 Instalasi Lengkap (Ubuntu 22.04/24.04)
 
-If you are new to server setup, run these steps first.
+Jalankan langkah-langkah berikut jika Anda baru pertama kali setup server.
 
-1. Update system packages:
+1. Perbarui paket sistem:
 
 ```bash
 sudo apt-get update
 sudo apt-get upgrade -y
 ```
 
-2. Install base tools:
+2. Instal alat dasar:
 
 ```bash
 sudo apt-get install -y ca-certificates curl gnupg lsb-release git make
 ```
 
-3. Install Docker Engine + Docker Compose plugin (official Docker repo):
+3. Instal Docker Engine + Docker Compose plugin (dari repo resmi Docker):
 
 ```bash
 sudo install -m 0755 -d /etc/apt/keyrings
@@ -58,21 +58,21 @@ sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-4. (Recommended) Allow your current user to run Docker without `sudo`:
+4. (Direkomendasikan) Izinkan user saat ini menjalankan Docker tanpa `sudo`:
 
 ```bash
 sudo usermod -aG docker "$USER"
 newgrp docker
 ```
 
-5. Install Node.js 22 LTS:
+5. Instal Node.js 22 LTS:
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 ```
 
-6. Install Go (match project requirement from `go.mod`, currently 1.24.1+):
+6. Instal Go (sesuaikan dengan versi di `go.mod`, saat ini 1.24.1+):
 
 ```bash
 GO_VERSION="1.24.1"
@@ -83,7 +83,7 @@ echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
 export PATH=$PATH:/usr/local/go/bin
 ```
 
-7. Verify all tools are installed:
+7. Verifikasi semua alat sudah terinstal:
 
 ```bash
 docker --version
@@ -94,26 +94,26 @@ go version
 make --version
 ```
 
-If Docker still needs `sudo` after step 4, log out and log in again.
+Jika Docker masih memerlukan `sudo` setelah langkah 4, logout lalu login kembali.
 
-### 2.2 Full Prerequisite Install (Debian 12)
+### 2.2 Instalasi Lengkap (Debian 12)
 
-Use this section if your server runs Debian 12 (bookworm).
+Gunakan bagian ini jika server Anda menjalankan Debian 12 (bookworm).
 
-1. Update system packages:
+1. Perbarui paket sistem:
 
 ```bash
 sudo apt-get update
 sudo apt-get upgrade -y
 ```
 
-2. Install base tools:
+2. Instal alat dasar:
 
 ```bash
 sudo apt-get install -y ca-certificates curl gnupg lsb-release git make
 ```
 
-3. Install Docker Engine + Docker Compose plugin (official Docker repo):
+3. Instal Docker Engine + Docker Compose plugin (dari repo resmi Docker):
 
 ```bash
 sudo install -m 0755 -d /etc/apt/keyrings
@@ -129,21 +129,21 @@ sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-4. (Recommended) Allow your current user to run Docker without `sudo`:
+4. (Direkomendasikan) Izinkan user saat ini menjalankan Docker tanpa `sudo`:
 
 ```bash
 sudo usermod -aG docker "$USER"
 newgrp docker
 ```
 
-5. Install Node.js 22 LTS:
+5. Instal Node.js 22 LTS:
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 ```
 
-6. Install Go (match project requirement from `go.mod`, currently 1.24.1+):
+6. Instal Go (sesuaikan dengan versi di `go.mod`, saat ini 1.24.1+):
 
 ```bash
 GO_VERSION="1.24.1"
@@ -154,7 +154,7 @@ echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
 export PATH=$PATH:/usr/local/go/bin
 ```
 
-7. Verify all tools are installed:
+7. Verifikasi semua alat sudah terinstal:
 
 ```bash
 docker --version
@@ -165,26 +165,26 @@ go version
 make --version
 ```
 
-If Docker still needs `sudo` after step 4, log out and log in again.
+Jika Docker masih memerlukan `sudo` setelah langkah 4, logout lalu login kembali.
 
 ## 3. Clone Project dari GitHub ke VPS
 
 Langkah ini dilakukan **sekali** saat pertama kali setup VPS.
 
-### 3.1 Generate SSH Key di VPS (jika belum ada)
+### 3.1 Buat SSH Key di VPS (jika belum ada)
 
 ```bash
-ssh-keygen -t ed25519 -C "your_email@example.com"
+ssh-keygen -t ed25519 -C "email@anda.com"
 # Tekan Enter untuk semua prompt (atau isi passphrase jika diinginkan)
 cat ~/.ssh/id_ed25519.pub
 ```
 
-Copy output public key tersebut, lalu tambahkan ke GitHub:
+Salin output public key tersebut, lalu tambahkan ke GitHub:
 **GitHub → Settings → SSH and GPG keys → New SSH key**
 
 ### 3.2 Clone Repository
 
-Pastikan sudah login ke GitHub dan SSH key sudah ditambahkan, lalu:
+Setelah SSH key ditambahkan, jalankan perintah berikut:
 
 ```bash
 # Buat direktori kerja
@@ -196,7 +196,7 @@ git clone git@github.com:startquick/groki-unlimited.git grokpi
 cd grokpi
 ```
 
-Atau jika menggunakan HTTPS (butuh Personal Access Token jika repo private):
+Atau jika menggunakan HTTPS (memerlukan Personal Access Token untuk repo private):
 
 ```bash
 # Buat Personal Access Token di: GitHub → Settings → Developer settings → Personal access tokens
@@ -212,23 +212,23 @@ ls -la
 git log --oneline -3
 ```
 
-Setelah clone berhasil, lanjut ke section berikutnya untuk build dan deploy.
+Setelah clone berhasil, lanjut ke bagian berikutnya untuk build dan deploy.
 
-## 4. Quick Start (Docker Compose)
+## 4. Menjalankan dengan Docker Compose
 
 ```bash
 cd grokpi
 cp config.defaults.toml config.toml
-# set your admin password in config.toml: [app].app_key
+# Ubah app_key di config.toml dengan password admin yang kuat
 
-# Build binary expected by Dockerfile.local (COPY bin/grokpi ...)
-# Option A (recommended):
+# Build binary yang dibutuhkan Dockerfile.local (COPY bin/grokpi ...)
+# Pilihan A (direkomendasikan):
 make build
-# Option B (if make is unavailable):
+# Pilihan B (jika make tidak tersedia):
 # cd web && npm ci && npm run build && cd ..
 # go build -o bin/grokpi ./cmd/grokpi
 
-# Ensure mounted dirs are writable by container user (uid 1000)
+# Pastikan direktori yang di-mount bisa ditulis oleh user container (uid 1000)
 mkdir -p data logs
 sudo chown -R 1000:1000 data logs
 
@@ -236,23 +236,23 @@ docker compose up -d --build
 curl -s http://127.0.0.1:8080/health
 ```
 
-Open the browser:
+Buka browser dan akses:
 
-- `http://YOUR_SERVER_IP:8080/login`
+- `http://IP_SERVER_ANDA:8080/login`
 
-## 5. First-Time Setup in Admin Console
+## 5. Konfigurasi Awal di Admin Console
 
-1. Sign in with `app_key`.
-2. Add upstream tokens in Token Management.
-3. Create an API key in API Keys.
-4. Call `/v1/models` using your new API key.
-5. Test chat/image/video requests.
+1. Login menggunakan `app_key`.
+2. Tambahkan upstream token di menu Token Management.
+3. Buat API key di menu API Keys.
+4. Coba panggil `/v1/models` menggunakan API key yang baru dibuat.
+5. Uji permintaan chat, gambar, dan video.
 
-## 6. Minimal Config Example
+## 6. Contoh Konfigurasi Minimal
 
 ```toml
 [app]
-app_key = "CHANGE_ME_STRONG_PASSWORD"
+app_key = "GANTI_DENGAN_PASSWORD_KUAT"
 host = "0.0.0.0"
 port = 8080
 
@@ -268,19 +268,19 @@ asset_proxy_url = ""
 enabled = false
 ```
 
-Important notes:
+Catatan penting:
 
-- Empty `app_key` blocks admin access.
-- Keep `config.toml` private.
-- For public deployment, run behind TLS reverse proxy.
+- `app_key` yang kosong akan memblokir akses admin.
+- Jangan bagikan file `config.toml` ke publik.
+- Untuk deployment publik, gunakan reverse proxy dengan TLS.
 
-## 7. API Examples
+## 7. Contoh Penggunaan API
 
-### 7.1 List Models
+### 7.1 Daftar Model
 
 ```bash
 curl -s http://127.0.0.1:8080/v1/models \
-  -H "Authorization: Bearer YOUR_API_KEY"
+  -H "Authorization: Bearer API_KEY_ANDA"
 ```
 
 ### 7.2 Chat Completion
@@ -288,25 +288,25 @@ curl -s http://127.0.0.1:8080/v1/models \
 ```bash
 curl -s http://127.0.0.1:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Authorization: Bearer API_KEY_ANDA" \
   -d '{
     "model": "grok-3-mini",
     "messages": [
-      {"role": "user", "content": "Hello from self-hosted Grokpi"}
+      {"role": "user", "content": "Halo dari Grokpi self-hosted"}
     ]
   }'
 ```
 
-### 7.3 Image Generation
+### 7.3 Generasi Gambar
 
 ```bash
 curl -s http://127.0.0.1:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Authorization: Bearer API_KEY_ANDA" \
   -d '{
     "model": "grok-imagine-1.0",
     "messages": [
-      {"role":"user","content":"A mountain lake at sunrise"}
+      {"role":"user","content":"Danau pegunungan saat matahari terbit"}
     ],
     "image_config": {
       "aspect_ratio": "16:9"
@@ -314,16 +314,16 @@ curl -s http://127.0.0.1:8080/v1/chat/completions \
   }'
 ```
 
-### 7.4 Video Generation
+### 7.4 Generasi Video
 
 ```bash
 curl -s http://127.0.0.1:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Authorization: Bearer API_KEY_ANDA" \
   -d '{
     "model": "grok-imagine-1.0-video",
     "messages": [
-      {"role":"user","content":"A cinematic drone shot over green rice fields"}
+      {"role":"user","content":"Pengambilan gambar drone sinematik di atas sawah hijau"}
     ],
     "video_config": {
       "aspect_ratio": "16:9",
@@ -334,30 +334,30 @@ curl -s http://127.0.0.1:8080/v1/chat/completions \
   }'
 ```
 
-## 8. VPS Production Checklist
+## 8. Checklist Produksi VPS
 
-- Use reverse proxy (Nginx/Caddy/Traefik) in front of Grokpi
-- Enable HTTPS (Let's Encrypt)
-- Restrict admin endpoint exposure if possible
-- Rotate API keys regularly
-- Back up `data/` and `config.toml`
-- Monitor container logs and restart policies
+- Gunakan reverse proxy (Nginx/Caddy/Traefik) di depan Grokpi
+- Aktifkan HTTPS (Let's Encrypt)
+- Batasi akses ke endpoint admin jika memungkinkan
+- Rotasi API key secara berkala
+- Backup direktori `data/` dan file `config.toml`
+- Pantau log container dan atur restart policy
 
-## 9. Updating Grokpi
+## 9. Memperbarui Grokpi
 
 ```bash
 git pull
-# review config.defaults.toml changes if any
+# Tinjau perubahan config.defaults.toml jika ada
 
-# rebuild local binary after code updates
+# Build ulang binary setelah pembaruan kode
 make build
-# or run manual build commands from section 3
+# Atau jalankan perintah build manual dari bagian 4
 
 docker compose up -d --build
 curl -s http://127.0.0.1:8080/health
 ```
 
-## 10. Backup and Restore
+## 10. Backup dan Restore
 
 Backup:
 
@@ -369,25 +369,25 @@ Restore:
 
 ```bash
 tar xzf grokpi-backup-YYYY-MM-DD.tar.gz
-# then restart
+# Lalu restart container
 docker compose up -d --build
 ```
 
-## 11. Common Issues
+## 11. Masalah Umum
 
-- `failed to solve ... "/bin/grokpi": not found` while `docker compose up --build`:
-  - Build binary first (`make build` or manual commands in section 3).
-- `failed to open database ... sqlite ... out of memory (14)` in container logs:
-  - Usually host volume permission issue. Run `mkdir -p data logs && sudo chown -R 1000:1000 data logs`.
-- `401` on admin login:
-  - Check `app_key` in `config.toml`.
-- `401 invalid_api_key` on `/v1/*`:
-  - Use API key from Admin -> API Keys, not admin password.
-- No model available:
-  - Add/enable valid upstream tokens.
-- Port `8080` already used:
-  - Stop old container/process or change port mapping.
+- `failed to solve ... "/bin/grokpi": not found` saat `docker compose up --build`:
+  - Build binary terlebih dahulu (`make build` atau perintah manual di bagian 4).
+- `failed to open database ... sqlite ... out of memory (14)` di log container:
+  - Biasanya masalah permission volume. Jalankan `mkdir -p data logs && sudo chown -R 1000:1000 data logs`.
+- `401` saat login admin:
+  - Periksa nilai `app_key` di `config.toml`.
+- `401 invalid_api_key` pada `/v1/*`:
+  - Gunakan API key dari Admin → API Keys, bukan password admin.
+- Tidak ada model yang tersedia:
+  - Tambahkan dan aktifkan upstream token yang valid.
+- Port `8080` sudah digunakan:
+  - Hentikan container/proses lama atau ubah port mapping.
 
 ---
 
-If you want, a dedicated step-by-step VPS guide (Ubuntu + Nginx + TLS + systemd + backup schedule) can be added next.
+Panduan langkah demi langkah yang lebih detail (Ubuntu + Nginx + TLS + systemd + jadwal backup otomatis) dapat ditambahkan jika diperlukan.
