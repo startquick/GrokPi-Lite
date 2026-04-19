@@ -206,6 +206,7 @@ Seluruh token, api keys, dan quota Grok disimpan secara transparan di `/data/gro
 Kapanpun Anda butuh menambah/menghapus token x.com, atau menerbitkan API Keys untuk user *client*, gunakan skrip bawaan:
 ```bash
 cd ~/GrokPi-Lite
+chmod +x ./scripts/linux/grokpi_admin.sh
 ./scripts/linux/grokpi_admin.sh
 ```
 
