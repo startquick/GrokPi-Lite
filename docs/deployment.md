@@ -221,8 +221,10 @@ tar czf grokpi-backup-$(date +%F).tar.gz config.toml data/
 Bila Anda mendapat notifikasi pembaruan di Github:
 ```bash
 cd ~/GrokPi-Lite
+# Batalkan modifikasi lokal (seperti chmod) agar git pull tidak conflict
+git checkout -- .
 git pull
 make build
 docker compose up -d --build
 ```
-Log akan mencatat GrokPi sukses *recompiled* ke versi paling mutakhir!
+Log akan mencatat GrokPi sukses *recompiled* ke versi paling mutakhir! Jika terjadi `error: Your local changes... akan di-overwrite`, perintah `git checkout -- .` di atas adalah solusinya.
