@@ -157,9 +157,18 @@ func handleBatchImport(ctx context.Context, ts TokenStoreInterface, syncer Token
 				videoQ = cfg.DefaultVideoQuota
 			}
 		}
+		pool := req.Pool
+		if pool == "" {
+			if cfg != nil && cfg.PreferredPool != "" {
+				pool = cfg.PreferredPool
+			} else {
+				pool = "ssoBasic"
+			}
+		}
+
 		token := &store.Token{
 			Token:             tokenStr,
-			Pool:              req.Pool,
+			Pool:              pool,
 			ChatQuota:         chatQ,
 			InitialChatQuota:  chatQ,
 			ImageQuota:        imageQ,
