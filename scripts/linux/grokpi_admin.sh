@@ -32,7 +32,7 @@ while true; do
         read -p "Enter tokens (comma separated for multiple): " upTokens
         JSON_TOKENS=$(echo "$upTokens" | tr ',' '\n' | sed 's/^[ \t]*//;s/[ \t]*$//' | sed 's/.*/"&"/' | paste -sd, -)
         if [ ! -z "$JSON_TOKENS" ]; then
-            JSON_PAYLOAD="{\"tokens\": [$JSON_TOKENS]}"
+            JSON_PAYLOAD="{\"operation\": \"import\", \"tokens\": [$JSON_TOKENS]}"
             curl -s -X POST http://127.0.0.1:8080/admin/tokens/batch \
               -H "Authorization: Bearer $TOKEN" \
               -H "Content-Type: application/json" \

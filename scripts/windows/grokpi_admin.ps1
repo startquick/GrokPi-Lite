@@ -30,7 +30,7 @@ while ($true) {
         $upTokens = Read-Host "Enter tokens (comma separated for multiple)"
         $tokenArray = $upTokens -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
         if ($tokenArray.Length -gt 0) {
-            $addBody = @{ tokens = $tokenArray } | ConvertTo-Json -Depth 5
+            $addBody = @{ operation = "import"; tokens = $tokenArray } | ConvertTo-Json -Depth 5
             try {
                 $null = Invoke-RestMethod -Uri "http://127.0.0.1:8080/admin/tokens/batch" -Method Post -Headers @{ "Authorization" = "Bearer $token" } -ContentType "application/json" -Body $addBody
                 Write-Host "Tokens added successfully!" -ForegroundColor Green
