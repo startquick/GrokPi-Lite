@@ -6,8 +6,8 @@ Panduan ini berfokus pada self-hosting di server atau VPS milik sendiri.
 ## 1. Fitur Utama
 
 - Endpoint OpenAI-compatible (`/v1/models`, `/v1/chat/completions`)
-- Admin console untuk token pool, API key, riwayat penggunaan, pengaturan, dan cache
-- Binary Go tunggal dengan web app yang sudah tertanam (embedded)
+- Endpoint Admin API untuk token pool, API key, riwayat penggunaan, pengaturan, dan cache
+- Binary Go tunggal API-only (Headless) tanpa beban resource Frontend/UI
 - SQLite sebagai default, PostgreSQL sebagai opsi
 - Dukungan deployment via Docker Compose
 
@@ -15,7 +15,7 @@ Panduan ini berfokus pada self-hosting di server atau VPS milik sendiri.
 
 - Server atau VPS Linux (Ubuntu 22.04+ direkomendasikan)
 - Docker + Docker Compose plugin
-- Go 1.24+ dan Node.js 22+ (diperlukan untuk build `bin/grokpi` dari `Dockerfile.local`)
+- Go 1.24+ (diperlukan untuk kompilasi `bin/grokpi`)
 - `make` (opsional tapi direkomendasikan)
 - Minimal 2 vCPU / 2 GB RAM untuk penggunaan ringan
 - Port terbuka: `8080` (atau gunakan reverse-proxy ke 80/443)
@@ -65,14 +65,7 @@ sudo usermod -aG docker "$USER"
 newgrp docker
 ```
 
-5. Instal Node.js 22 LTS:
-
-```bash
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt-get install -y nodejs
-```
-
-6. Instal Go (sesuaikan dengan versi di `go.mod`, saat ini 1.24.1+):
+5. Instal Go (sesuaikan dengan versi di `go.mod`, saat ini 1.24.1+):
 
 ```bash
 GO_VERSION="1.24.1"
@@ -83,13 +76,11 @@ echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
 export PATH=$PATH:/usr/local/go/bin
 ```
 
-7. Verifikasi semua alat sudah terinstal:
+6. Verifikasi semua alat sudah terinstal:
 
 ```bash
 docker --version
 docker compose version
-node --version
-npm --version
 go version
 make --version
 ```
@@ -136,14 +127,7 @@ sudo usermod -aG docker "$USER"
 newgrp docker
 ```
 
-5. Instal Node.js 22 LTS:
-
-```bash
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt-get install -y nodejs
-```
-
-6. Instal Go (sesuaikan dengan versi di `go.mod`, saat ini 1.24.1+):
+5. Instal Go (sesuaikan dengan versi di `go.mod`, saat ini 1.24.1+):
 
 ```bash
 GO_VERSION="1.24.1"
@@ -154,13 +138,11 @@ echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
 export PATH=$PATH:/usr/local/go/bin
 ```
 
-7. Verifikasi semua alat sudah terinstal:
+6. Verifikasi semua alat sudah terinstal:
 
 ```bash
 docker --version
 docker compose version
-node --version
-npm --version
 go version
 make --version
 ```
@@ -225,7 +207,6 @@ cp config.defaults.toml config.toml
 # Pilihan A (direkomendasikan):
 make build
 # Pilihan B (jika make tidak tersedia):
-# cd web && npm ci && npm run build && cd ..
 # go build -o bin/grokpi ./cmd/grokpi
 
 # Pastikan direktori yang di-mount bisa ditulis oleh user container (uid 1000)
@@ -236,17 +217,39 @@ docker compose up -d --build
 curl -s http://127.0.0.1:8080/health
 ```
 
-Buka browser dan akses:
 
-- `http://IP_SERVER_ANDA:8080/login`
 
-## 5. Konfigurasi Awal di Admin Console
+## 5. Konfigurasi Awal via Admin API (Headless)
 
-1. Login menggunakan `app_key`.
-2. Tambahkan upstream token di menu Token Management.
-3. Buat API key di menu API Keys.
-4. Coba panggil `/v1/models` menggunakan API key yang baru dibuat.
-5. Uji permintaan chat, gambar, dan video.
+Karena versi ini tidak memiliki UI (Web Panel), semua manajemen dilakukan via API Console.
+
+1. **Dapatkan Admin Token:**
+
+```bash
+curl -X POST http://127.0.0.1:8080/admin/login \
+  -H "Content-Type: application/json" \
+  -d '{"app_key": "GANTI_DENGAN_PASSWORD_KUAT"}'
+```
+*Catat nilai `token` dari response.*
+
+2. **Tambahkan Upstream Grok Token:**
+
+```bash
+curl -X POST http://127.0.0.1:8080/admin/tokens/batch \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"tokens": ["sso-xxx-yyy-zzz"]}'
+```
+
+3. **Buat API Key Anda Sendiri:**
+
+```bash
+curl -X POST http://127.0.0.1:8080/admin/apikeys \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "production-key", "limit_type": "unlimited"}'
+```
+*API Key inilah yang nanti akan dipakai untuk request ke endpoint `/v1/chat/completions` atau didaftarkan pada LLM Apps seperti AnythingLLM, Dify, dll.*
 
 ## 6. Contoh Konfigurasi Minimal
 

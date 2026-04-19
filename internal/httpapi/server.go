@@ -278,9 +278,6 @@ func (s *Server) setupRoutes() {
 			}
 		})
 	})
-
-	// Frontend SPA (catch-all, must be last)
-	s.router.Handle("/*", SPAHandler())
 }
 
 // applyAPIAuth adds authentication middleware to an API route group.
