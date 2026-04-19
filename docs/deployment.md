@@ -185,22 +185,7 @@ Kosongkan semua isi file tersebut (atau hapus yang tidak penting), dan masukkan 
 
 ```text
 api.namadomain.com {
-    reverse_proxy 127.0.0.1:8080 {
-        header_up X-Real-IP {remote_host}
-        transport http {
-            read_buffer  4096
-        }
-    }
-    # Izinkan limit payload lebih besar jika memproses banyak teks/gambar
-    request_body {
-        max_size 40MB
-    }
-    timeouts {
-        read_body   30s
-        read_header 10s
-        write        5m
-        idle         5m
-    }
+    reverse_proxy 127.0.0.1:8080
 }
 ```
 Simpan file (Ctrl+O, Enter, Ctrl+X), lalu *restart* service:
