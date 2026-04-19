@@ -123,6 +123,7 @@ type ImageFlow struct {
 	tokenConfigFn     func() *config.TokenConfig
 	appConfigFn       func() *config.AppConfig
 	imageConfigFn     func() *config.ImageConfig
+	cfRefreshTrigger  func()
 }
 
 // NewImageFlow creates a new image flow with per-request token selection.
@@ -173,6 +174,11 @@ func (f *ImageFlow) SetImageConfigProvider(fn func() *config.ImageConfig) {
 	f.imageConfigFn = fn
 }
 
+// SetCFRefreshTrigger sets a callback invoked on 403 to trigger immediate CF cookie refresh.
+func (f *ImageFlow) SetCFRefreshTrigger(fn func()) {
+	f.cfRefreshTrigger = fn
+}
+
 // Generate generates images based on the request.
 func (f *ImageFlow) Generate(ctx context.Context, req *ImageRequest) (*ImageResponse, error) {
 	if err := req.Validate(); err != nil {
@@ -199,6 +205,11 @@ func (f *ImageFlow) Generate(ctx context.Context, req *ImageRequest) (*ImageResp
 	for i := 0; i < req.N; i++ {
 		result, err := f.generateWithRecovery(ctx, req.Model, tok, req.Prompt, aspectRatio, enableNSFW)
 		if err != nil {
+			if errors.Is(err, xai.ErrCFChallenge) && f.cfRefreshTrigger != nil {
+				SafeGo("image_cf_refresh_trigger", func() {
+					f.cfRefreshTrigger()
+				})
+			}
 			if !isTransportError(err) {
 				f.tokenSvc.ReportError(tok.ID, err.Error())
 			}

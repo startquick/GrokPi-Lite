@@ -1,6 +1,9 @@
 package cfrefresh
 
 import (
+	"bytes"
+	"encoding/json"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -25,8 +28,9 @@ type Scheduler struct {
 	stopOnce    sync.Once
 	stopped     chan struct{}
 	done        chan struct{}
-	triggerCh   chan struct{} // external trigger (e.g. on 403)
-	lastRefresh atomic.Int64  // unix seconds of last successful refresh
+	triggerCh        chan struct{} // external trigger (e.g. on 403)
+	lastAttempt      atomic.Int64  // unix seconds of last refresh attempt
+	consecutiveFails atomic.Int32  // number of sequential failures
 }
 
 // NewScheduler creates a CF refresh scheduler.
@@ -59,10 +63,19 @@ func (s *Scheduler) TriggerRefresh() {
 	if !s.isEnabled() {
 		return
 	}
-	// Debounce: skip if last refresh was within cooldown period.
-	last := s.lastRefresh.Load()
-	if last > 0 && time.Since(time.Unix(last, 0)) < triggerCooldown {
-		logging.Debug("cf_refresh: trigger ignored (cooldown)")
+	// Debounce: calculate backoff based on consecutive failures
+	fails := s.consecutiveFails.Load()
+	backoff := triggerCooldown
+	if fails > 0 {
+		backoff = time.Duration(1<<fails) * triggerCooldown
+		if backoff > 15*time.Minute {
+			backoff = 15 * time.Minute
+		}
+	}
+
+	last := s.lastAttempt.Load()
+	if last > 0 && time.Since(time.Unix(last, 0)) < backoff {
+		logging.Debug("cf_refresh: trigger ignored (cooldown/backoff)", "fails", fails, "backoff_sec", backoff.Seconds())
 		return
 	}
 	// Non-blocking send — if channel already has a pending trigger, skip.
@@ -117,14 +130,23 @@ func (s *Scheduler) refreshOnce() {
 	timeout := s.getTimeout()
 	proxyURL := cfg.Proxy.BaseProxyURL
 
+	s.lastAttempt.Store(time.Now().Unix())
+
 	logging.Info("cf_refresh: refreshing cf_clearance...",
 		"flaresolverr_url", flareURL, "timeout", timeout)
 
 	result, err := SolveCFChallenge(flareURL, timeout, proxyURL)
 	if err != nil {
-		logging.Error("cf_refresh: refresh failed", "error", err)
+		fails := s.consecutiveFails.Add(1)
+		logging.Error("cf_refresh: refresh failed", "error", err, "fails", fails)
+		
+		if fails == 3 {
+			s.sendTelegramAlert("🚨 *GrokPi Alert*\nFlareSolverr gagal melewati Cloudflare 3x berturut-turut.\nSolusi Bypass mungkin terhambat atau membutuhkan versi bot terbaru.")
+		}
 		return
 	}
+
+	s.consecutiveFails.Store(0)
 
 	// Update runtime config.
 	_ = s.runtime.Update(func(cfg *config.Config) error {
@@ -139,8 +161,7 @@ func (s *Scheduler) refreshOnce() {
 		return nil
 	})
 
-	// Record last successful refresh time.
-	s.lastRefresh.Store(time.Now().Unix())
+
 
 	// Persist to DB so values survive restart.
 	kvs := map[string]string{
@@ -181,4 +202,32 @@ func (s *Scheduler) getTimeout() int {
 		return defaultTimeout
 	}
 	return v
+}
+
+func (s *Scheduler) sendTelegramAlert(message string) {
+	cfg := s.runtime.Get().Proxy
+	if cfg.TelegramBotToken == "" || cfg.TelegramChatID == "" {
+		return
+	}
+
+	logging.Info("cf_refresh: sending telegram alert")
+	payload, _ := json.Marshal(map[string]string{
+		"chat_id":    cfg.TelegramChatID,
+		"text":       message,
+		"parse_mode": "Markdown",
+	})
+
+	url := "https://api.telegram.org/bot" + cfg.TelegramBotToken + "/sendMessage"
+	go func() {
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Post(url, "application/json", bytes.NewReader(payload))
+		if err != nil {
+			logging.Error("cf_refresh: failed to send telegram alert", "error", err)
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			logging.Error("cf_refresh: telegram api returned non-ok status", "status", resp.StatusCode)
+		}
+	}()
 }

@@ -81,8 +81,13 @@ func main() {
 	if err != nil {
 		logging.Error("failed to load config overrides from database", "error", err)
 	} else if len(dbOverrides) > 0 {
-		cfg.ApplyDBOverrides(dbOverrides)
-		logging.Info("applied database config overrides", "count", len(dbOverrides))
+		overriddenKeys := cfg.ApplyDBOverrides(dbOverrides)
+		if len(overriddenKeys) > 0 {
+			logging.Warn("configuration logic overloaded from database", "overridden_keys_count", len(overriddenKeys))
+			logging.Warn("infrastructure values in config.toml will be respected, but application settings in config.toml will be ignored")
+		} else {
+			logging.Info("applied database config overrides", "count", len(dbOverrides))
+		}
 	}
 	runtimeCfg := config.NewRuntime(cfg)
 	rootCtx, rootCancel := context.WithCancel(context.Background())
@@ -108,6 +113,7 @@ func main() {
 	scheduler.SetConfigProvider(func() *config.TokenConfig {
 		return &runtimeCfg.Get().Token
 	})
+	scheduler.SetCFRefreshTrigger(cfScheduler.TriggerRefresh)
 	scheduler.Start(rootCtx)
 	logging.Info("token quota recovery scheduler started", "mode", cfg.Token.QuotaRecoveryMode)
 
@@ -136,6 +142,7 @@ func main() {
 	videoFlow.SetAppConfigProvider(func() *config.AppConfig {
 		return &runtimeCfg.Get().App
 	})
+	videoFlow.SetCFRefreshTrigger(cfScheduler.TriggerRefresh)
 	logging.Info("video flow ready")
 
 	// Create ChatFlow
@@ -222,6 +229,7 @@ func main() {
 		return &runtimeCfg.Get().Image
 	})
 	imageFlow.SetUsageRecorder(usageBuffer)
+	imageFlow.SetCFRefreshTrigger(cfScheduler.TriggerRefresh)
 	logging.Info("image flow ready")
 
 	// Create cache service

@@ -2,11 +2,13 @@ package token
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/crmmc/grokpi/internal/config"
+	"github.com/crmmc/grokpi/internal/xai"
 )
 
 const (
@@ -34,8 +36,9 @@ type Scheduler struct {
 	interval   time.Duration
 	sem        chan struct{}
 	wg         sync.WaitGroup
-	stopOnce   sync.Once
-	stopped    chan struct{}
+	stopOnce         sync.Once
+	stopped          chan struct{}
+	cfRefreshTrigger func()
 }
 
 // NewScheduler creates a new quota recovery scheduler.
@@ -53,6 +56,11 @@ func NewScheduler(manager *TokenManager, cfg *config.TokenConfig, baseURL string
 // SetConfigProvider sets a dynamic token config provider.
 func (s *Scheduler) SetConfigProvider(fn func() *config.TokenConfig) {
 	s.configFunc = fn
+}
+
+// SetCFRefreshTrigger sets a callback invoked on CF Challenge to trigger immediate CF cookie refresh.
+func (s *Scheduler) SetCFRefreshTrigger(fn func()) {
+	s.cfRefreshTrigger = fn
 }
 
 // Start begins the periodic refresh loop.
@@ -150,6 +158,11 @@ func (s *Scheduler) refreshToken(ctx context.Context, token TokenSnapshot) {
 		return
 	}
 	if err := s.manager.SyncQuota(ctx, storeToken, s.baseURL); err != nil {
+		if errors.Is(err, xai.ErrCFChallenge) && s.cfRefreshTrigger != nil {
+			safeGo("token_cf_refresh_trigger", func() {
+				s.cfRefreshTrigger()
+			})
+		}
 		slog.Warn("failed to refresh token quota",
 			"token_id", token.ID,
 			"error", err,

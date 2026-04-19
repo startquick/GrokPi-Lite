@@ -27,21 +27,21 @@ func TestNewModelRegistryFromConfig(t *testing.T) {
 	}
 
 	// Basic models should exist in the registry.
-	for _, m := range []string{"grok-2", "grok-2-mini"} {
+	for _, m := range []string{"grok/grok-2", "grok/grok-2-mini"} {
 		if _, ok := registry.models[m]; !ok {
 			t.Errorf("expected model %s in registry", m)
 		}
 	}
 
 	// Super models should exist in the registry.
-	for _, m := range []string{"grok-3", "grok-3-mini"} {
+	for _, m := range []string{"grok/grok-3", "grok/grok-3-mini"} {
 		if _, ok := registry.models[m]; !ok {
 			t.Errorf("expected model %s in registry", m)
 		}
 	}
 
 	// Unknown model should not be in registry
-	if _, ok := registry.models["not-a-model"]; ok {
+	if _, ok := registry.models["grok/not-a-model"]; ok {
 		t.Error("expected unknown model to not be in registry")
 	}
 }
@@ -102,14 +102,14 @@ func TestHandleModels_ModelEntryFields(t *testing.T) {
 	// Find grok-3 in response
 	var found *ModelEntry
 	for i := range resp.Data {
-		if resp.Data[i].ID == "grok-3" {
+		if resp.Data[i].ID == "grok/grok-3" {
 			found = &resp.Data[i]
 			break
 		}
 	}
 
 	if found == nil {
-		t.Fatal("grok-3 not found in response")
+		t.Fatal("grok/grok-3 not found in response")
 	}
 
 	if found.Object != "model" {
@@ -131,13 +131,13 @@ func TestNewModelRegistryFromConfig_StripsCostSuffix(t *testing.T) {
 	registry := NewModelRegistryFromConfig(cfg)
 
 	// "#N" should be stripped — lookup by clean name
-	for _, name := range []string{"grok-3-thinking", "grok-4-heavy", "grok-3"} {
+	for _, name := range []string{"grok/grok-3-thinking", "grok/grok-4-heavy", "grok/grok-3"} {
 		if _, ok := registry.models[name]; !ok {
 			t.Errorf("expected model %s in registry (cost suffix stripped)", name)
 		}
 	}
 	// Raw entry with suffix should NOT exist
-	for _, raw := range []string{"grok-3-thinking#4", "grok-4-heavy#4"} {
+	for _, raw := range []string{"grok/grok-3-thinking#4", "grok/grok-4-heavy#4", "grok-3-thinking#4"} {
 		if _, ok := registry.models[raw]; ok {
 			t.Errorf("model %s should not be in registry (cost suffix not stripped)", raw)
 		}

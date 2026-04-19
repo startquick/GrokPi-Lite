@@ -8,6 +8,8 @@ Panduan ini berfokus pada self-hosting di server atau VPS milik sendiri.
 - Endpoint OpenAI-compatible (`/v1/models`, `/v1/chat/completions`)
 - Endpoint Admin API untuk token pool, API key, riwayat penggunaan, pengaturan, dan cache
 - Binary Go tunggal API-only (Headless) tanpa beban resource Frontend/UI
+- Mekanisme pintar pemulihan Cloudflare (*CF Challenge Bypass*) dengan *circuit breaker* otomatis
+- Peringatan proaktif status upstream xAI via notifikasi Telegram Webhook
 - SQLite sebagai default, PostgreSQL sebagai opsi
 - Dukungan deployment via Docker Compose
 
@@ -62,6 +64,9 @@ log_json = false
 base_proxy_url = ""
 asset_proxy_url = ""
 enabled = false
+# Opsional - Peringkat Cloudflare Gagal
+telegram_bot_token = ""
+telegram_chat_id = ""
 ```
 
 Catatan penting:

@@ -79,6 +79,8 @@ type ProxyConfig struct {
 	CFClearance        string `toml:"cf_clearance"`
 	Browser            string `toml:"browser"`
 	UserAgent          string `toml:"user_agent"`
+	TelegramBotToken   string `toml:"telegram_bot_token"`
+	TelegramChatID     string `toml:"telegram_chat_id"`
 }
 
 // RetryConfig contains retry policy settings.
@@ -113,7 +115,9 @@ type TokenConfig struct {
 
 // ApplyDBOverrides applies database config entries on top of file-based config.
 // Priority: DB > config file > defaults.
-func (c *Config) ApplyDBOverrides(kvs map[string]string) {
+func (c *Config) ApplyDBOverrides(kvs map[string]string) []string {
+	var overridden []string
+
 	// Pre-check: browser and UA must be paired from the same source.
 	// If browser has no DB override, don't apply DB UA override either.
 	browserInDB := kvs["proxy.browser"]
@@ -123,6 +127,7 @@ func (c *Config) ApplyDBOverrides(kvs map[string]string) {
 	}
 
 	for k, v := range kvs {
+		matched := true
 		switch k {
 		case "app.app_key":
 			c.App.AppKey = v
@@ -223,6 +228,10 @@ func (c *Config) ApplyDBOverrides(kvs map[string]string) {
 			if v != "" {
 				c.Proxy.UserAgent = v
 			}
+		case "proxy.telegram_bot_token":
+			c.Proxy.TelegramBotToken = v
+		case "proxy.telegram_chat_id":
+			c.Proxy.TelegramChatID = v
 		// Retry overrides
 		case "retry.max_tokens":
 			if n, err := strconv.Atoi(v); err == nil {
@@ -372,8 +381,14 @@ func (c *Config) ApplyDBOverrides(kvs map[string]string) {
 			if v != "" {
 				c.Token.SelectionAlgorithm = v
 			}
+		default:
+			matched = false
+		}
+		if matched {
+			overridden = append(overridden, k)
 		}
 	}
+	return overridden
 }
 
 func splitTrimmed(v string) []string {

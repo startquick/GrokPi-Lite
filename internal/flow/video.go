@@ -2,6 +2,7 @@ package flow
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"time"
@@ -51,6 +52,7 @@ type VideoFlow struct {
 	usageLog      UsageRecorder
 	cacheSvc      *cache.Service
 	appConfigFn   func() *config.AppConfig
+	cfRefreshTrigger func()
 }
 
 // NewVideoFlow creates a new VideoFlow.
@@ -99,6 +101,11 @@ func (f *VideoFlow) appConfig() *config.AppConfig {
 	return f.appConfigFn()
 }
 
+// SetCFRefreshTrigger sets a callback invoked on 403 to trigger immediate CF cookie refresh.
+func (f *VideoFlow) SetCFRefreshTrigger(fn func()) {
+	f.cfRefreshTrigger = fn
+}
+
 // GenerateSync runs video generation synchronously and returns the final URL.
 func (f *VideoFlow) GenerateSync(ctx context.Context, req *VideoRequest) (string, error) {
 	apiKeyID := FlowAPIKeyIDFromContext(ctx)
@@ -113,6 +120,11 @@ func (f *VideoFlow) GenerateSync(ctx context.Context, req *VideoRequest) (string
 
 	videoURL, err := f.generateVideoViaChat(timeoutCtx, tok, req)
 	if err != nil {
+		if errors.Is(err, xai.ErrCFChallenge) && f.cfRefreshTrigger != nil {
+			SafeGo("video_cf_refresh_trigger", func() {
+				f.cfRefreshTrigger()
+			})
+		}
 		f.reportTokenError(tok.ID, err)
 		f.recordUsage(apiKeyID, tok.ID, req.Model, 500, time.Since(start))
 		return "", err

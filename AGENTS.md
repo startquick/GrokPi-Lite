@@ -29,3 +29,8 @@
 - Runtime config precedence is `DB overrides > config.toml > defaults`; editing `config.toml` may appear ignored when admin-saved config exists in DB.
 - Local defaults are from `config.defaults.toml`; user-specific `config.toml` is gitignored and mounted into Docker at `/app/config.toml`.
 - Default `app_key` in `config.defaults.toml` is `"QUICKstart012345+"` — always change this before exposing the service in production.
+
+## Cloudflare Bypass & Anti-Bot Protection
+- **CFRefresh Trigger**: The `cfScheduler.TriggerRefresh` hook is wired across the entire application (Chat, Video, Image, and Token Quota scheduler). Any `403` Cloudflare Challenge from xAI forces an immediate *FlareSolverr* bypass attempt on-the-fly.
+- **Fail-Safe & Backoff**: Consecutive FlareSolverr failures increment an internal tracking state, causing *exponential backoff* logic (waiting 60s, 120s, up to 15m) to prevent upstream API blocking and local overload.
+- **Telegram Webhook**: Using `proxy.telegram_bot_token` and `proxy.telegram_chat_id`, the system will proactively send Telegram alerts to admins if the solver fails 3 times in a row.

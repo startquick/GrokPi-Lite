@@ -96,6 +96,10 @@ cf_clearance = ""
 browser = "chrome_146"
 # User-Agent string (must match browser profile)
 user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+# Telegram Bot Token for alerts (optional)
+telegram_bot_token = ""
+# Telegram Chat ID for alerts (optional)
+telegram_chat_id = ""
 
 # ==================== Retry Policy ====================
 [retry]
