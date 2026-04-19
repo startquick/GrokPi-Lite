@@ -47,10 +47,10 @@ while true; do
 import sys, json
 try:
   data = json.load(sys.stdin)
-  print(f"{\"ID\":<5} | {\"STATUS\":<10} | {\"QUOTA\":<6} | {\"TOKEN\"}")
+  print("{:<5} | {:<10} | {:<6} | {}".format("ID", "STATUS", "QUOTA", "TOKEN"))
   print("-" * 65)
   for t in data.get("data", []):
-      print(f"{t.get(\"id\",\"\"):<5} | {t.get(\"status\",\"\"):<10} | {t.get(\"chat_quota\",\"\"):<6} | {t.get(\"token\",\"\")}")
+      print("{:<5} | {:<10} | {:<6} | {}".format(t.get("id",""), t.get("status",""), t.get("chat_quota",""), t.get("token","")))
 except Exception:
   print("Failed to parse JSON")'
         else
@@ -83,10 +83,10 @@ except Exception:
 import sys, json
 try:
   data = json.load(sys.stdin)
-  print(f"{\"ID\":<5} | {\"STATUS\":<10} | {\"NAME\":<15} | {\"KEY\"}")
+  print("{:<5} | {:<10} | {:<15} | {}".format("ID", "STATUS", "NAME", "KEY"))
   print("-" * 75)
   for t in data.get("data", []):
-      print(f"{t.get(\"id\",\"\"):<5} | {t.get(\"status\",\"\"):<10} | {t.get(\"name\",\"\")[:15]:<15} | {t.get(\"key\",\"\")}")
+      print("{:<5} | {:<10} | {:<15} | {}".format(t.get("id",""), t.get("status",""), str(t.get("name",""))[:15], t.get("key","")))
 except Exception:
   print("Failed to parse JSON")'
         else
