@@ -32,8 +32,13 @@ while ($true) {
         if ($tokenArray.Length -gt 0) {
             $addBody = @{ operation = "import"; tokens = $tokenArray } | ConvertTo-Json -Depth 5
             try {
-                $null = Invoke-RestMethod -Uri "http://127.0.0.1:8080/admin/tokens/batch" -Method Post -Headers @{ "Authorization" = "Bearer $token" } -ContentType "application/json" -Body $addBody
-                Write-Host "Tokens added successfully!" -ForegroundColor Green
+                $batchRes = Invoke-RestMethod -Uri "http://127.0.0.1:8080/admin/tokens/batch" -Method Post -Headers @{ "Authorization" = "Bearer $token" } -ContentType "application/json" -Body $addBody
+                if ($batchRes.failed -gt 0) {
+                    Write-Host "Failed to add some or all tokens. Details:" -ForegroundColor Red
+                    $batchRes | ConvertTo-Json -Depth 5 | Write-Host
+                } else {
+                    Write-Host "Tokens added successfully!" -ForegroundColor Green
+                }
             } catch {
                 Write-Host "Failed to add tokens." -ForegroundColor Red
             }

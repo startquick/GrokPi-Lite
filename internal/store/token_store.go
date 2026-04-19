@@ -145,6 +145,8 @@ func (s *TokenStore) GetToken(ctx context.Context, id uint) (*Token, error) {
 
 // CreateToken creates a new token.
 func (s *TokenStore) CreateToken(ctx context.Context, token *Token) error {
+	// Clean up any soft-deleted token with the same string to prevent unique constraint failures
+	s.db.WithContext(ctx).Unscoped().Where("token = ?", token.Token).Delete(&Token{})
 	return s.db.WithContext(ctx).Create(token).Error
 }
 
@@ -173,9 +175,9 @@ func (s *TokenStore) ListTokenIDs(ctx context.Context, filter TokenFilter) ([]ui
 	return ids, query.Pluck("id", &ids).Error
 }
 
-// DeleteToken soft-deletes a token by ID.
+// DeleteToken permanently deletes a token by ID.
 func (s *TokenStore) DeleteToken(ctx context.Context, id uint) error {
-	result := s.db.WithContext(ctx).Delete(&Token{}, id)
+	result := s.db.WithContext(ctx).Unscoped().Delete(&Token{}, id)
 	if result.Error != nil {
 		return result.Error
 	}

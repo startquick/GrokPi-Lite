@@ -33,11 +33,17 @@ while true; do
         JSON_TOKENS=$(echo "$upTokens" | tr ',' '\n' | sed 's/^[ \t]*//;s/[ \t]*$//' | sed 's/.*/"&"/' | paste -sd, -)
         if [ ! -z "$JSON_TOKENS" ]; then
             JSON_PAYLOAD="{\"operation\": \"import\", \"tokens\": [$JSON_TOKENS]}"
-            curl -s -X POST http://127.0.0.1:8080/admin/tokens/batch \
+            K_RES=$(curl -s -X POST http://127.0.0.1:8080/admin/tokens/batch \
               -H "Authorization: Bearer $TOKEN" \
               -H "Content-Type: application/json" \
-              -d "$JSON_PAYLOAD" > /dev/null
-            echo -e "\e[32mTokens added successfully!\e[0m"
+              -d "$JSON_PAYLOAD")
+            FAILED=$(echo "$K_RES" | grep -o '"failed":[0-9]*' | cut -d: -f2 | head -n1)
+            
+            if [ "$FAILED" = "0" ] || [ -z "$FAILED" ]; then
+                echo -e "\e[32mTokens added successfully!\e[0m"
+            else
+                echo -e "\e[31mFailed to add tokens. Details: $K_RES\e[0m"
+            fi
         fi
     elif [ "$choice" = "2" ]; then
         RES=$(curl -s -X GET "http://127.0.0.1:8080/admin/tokens?page_size=100" -H "Authorization: Bearer $TOKEN")
