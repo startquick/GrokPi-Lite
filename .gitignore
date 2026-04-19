@@ -1,6 +1,6 @@
 # Binaries
 bin/
-grokpi
+/grokpi
 *.exe
 
 # Claude Code
