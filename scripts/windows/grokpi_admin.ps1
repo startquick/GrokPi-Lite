@@ -49,7 +49,7 @@ while ($true) {
             $listRes = Invoke-RestMethod -Uri "http://127.0.0.1:8080/admin/tokens?page_size=100" -Method Get -Headers @{ "Authorization" = "Bearer $token" }
             if ($listRes.data.Count -gt 0) {
                 Write-Host "`n--- Upstream Token List ---" -ForegroundColor Cyan
-                $listRes.data | Select-Object id, status, chat_quota, token | Format-Table
+                $listRes.data | Select-Object id, status, pool, priority, chat_quota, token | Format-Table
             } else {
                 Write-Host "No upstream tokens found." -ForegroundColor Yellow
             }

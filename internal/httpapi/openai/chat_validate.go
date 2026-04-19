@@ -55,11 +55,14 @@ func normalizeChatRequest(req *ChatRequest, cfg *config.Config) (*ChatRequest, *
 	if req == nil {
 		return nil, invalidRequest("invalid_request", "request is required")
 	}
-	if strings.TrimSpace(req.Model) == "" {
+
+	out := *req
+	out.Model = strings.TrimPrefix(out.Model, "grok/")
+
+	if strings.TrimSpace(out.Model) == "" {
 		return nil, invalidRequest("missing_model", "model is required")
 	}
 
-	out := *req
 	if err := validateMessages(out.Messages); err != nil {
 		return nil, err
 	}

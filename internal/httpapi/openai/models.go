@@ -64,11 +64,11 @@ func NewModelRegistryFromConfig(cfg *config.TokenConfig) *ModelRegistry {
 
 	for _, m := range cfg.BasicModels {
 		name, _ := tkn.ParseModelEntry(m)
-		r.Add(ModelInfo{ID: name, Object: "model", Created: created, OwnedBy: "xai"})
+		r.Add(ModelInfo{ID: "grok/" + name, Object: "model", Created: created, OwnedBy: "xai"})
 	}
 	for _, m := range cfg.SuperModels {
 		name, _ := tkn.ParseModelEntry(m)
-		r.Add(ModelInfo{ID: name, Object: "model", Created: created, OwnedBy: "xai"})
+		r.Add(ModelInfo{ID: "grok/" + name, Object: "model", Created: created, OwnedBy: "xai"})
 	}
 	return r
 }

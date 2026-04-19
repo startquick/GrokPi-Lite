@@ -54,12 +54,19 @@ import sys, json
 try:
   data = json.load(sys.stdin)
   if "error" in data:
-      print(f"API Error: {data['error']}")
+      print("API Error: " + str(data.get("error")))
   else:
-      print("{:<5} | {:<10} | {:<6} | {}".format("ID", "STATUS", "QUOTA", "TOKEN"))
-      print("-" * 65)
+      print("{:<5} | {:<8} | {:<11} | {:<4} | {:<5} | {}".format("ID", "STATUS", "POOL", "PRIO", "QUOTA", "TOKEN"))
+      print("-" * 80)
       for t in data.get("data", []):
-          print("{:<5} | {:<10} | {:<6} | {}".format(t.get("id",""), t.get("status",""), t.get("chat_quota",""), t.get("token","")))
+          print("{:<5} | {:<8} | {:<11} | {:<4} | {:<5} | {}".format(
+              t.get("id", ""), 
+              t.get("status", ""), 
+              str(t.get("pool", ""))[:11], 
+              t.get("priority", 0), 
+              t.get("chat_quota", ""), 
+              t.get("token", "")
+          ))
 except Exception as e:
   print("Failed to parse JSON")'
         else
