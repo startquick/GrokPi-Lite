@@ -92,6 +92,21 @@ func (m *TokenManager) SyncQuota(ctx context.Context, token *store.Token, baseUR
 	token.ChatQuota = resp.RemainingQueries
 	token.InitialChatQuota = resp.RemainingQueries
 
+	// Auto-assign Pool and Priority based on quota capacity.
+	// Premium accounts on grok-3 typically receive >= 40 queries.
+	if token.InitialChatQuota >= 30 {
+		if token.Pool == "" {
+			token.Pool = PoolSuper
+		}
+		if token.Priority == 0 {
+			token.Priority = 10
+		}
+	} else {
+		if token.Pool == "" {
+			token.Pool = PoolBasic
+		}
+	}
+
 	// Restore image/video quotas to configured defaults on sync
 	if m.cfg.DefaultImageQuota > 0 {
 		token.ImageQuota = m.cfg.DefaultImageQuota

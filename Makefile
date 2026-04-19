@@ -6,16 +6,16 @@ LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.buildTime=$(BUILD_TIME)"
 
 # Go build
 build:
-go build $(LDFLAGS) -o bin/grokpi ./cmd/grokpi
+	go build $(LDFLAGS) -o bin/grokpi ./cmd/grokpi
 
 run: build
-./bin/grokpi
+	./bin/grokpi
 
 dev:
-go run $(LDFLAGS) ./cmd/grokpi
+	go run $(LDFLAGS) ./cmd/grokpi
 
 test:
-go test -race -v ./...
+	go test -race -v ./...
 
 clean:
-rm -rf bin/ data/
+	rm -rf bin/ data/

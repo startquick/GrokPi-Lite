@@ -32,8 +32,8 @@ func TestAPIKeyStore_Create(t *testing.T) {
 	err := s.Create(ctx, ak)
 	require.NoError(t, err)
 	assert.NotZero(t, ak.ID)
-	assert.True(t, strings.HasPrefix(ak.Key, "gf-"), "key should have gf- prefix")
-	assert.Equal(t, 51, len(ak.Key), "key should be 51 chars total (gf- + 48 hex)")
+	assert.True(t, strings.HasPrefix(ak.Key, "sk-"), "key should have sk- prefix")
+	assert.Equal(t, 51, len(ak.Key), "key should be 51 chars total (sk- + 48 hex)")
 
 	// Verify stored in DB
 	var found APIKey
@@ -93,7 +93,7 @@ func TestAPIKeyStore_GetByKey(t *testing.T) {
 	assert.Equal(t, ak.Key, found.Key)
 
 	// Not found
-	found, err = s.GetByKey(ctx, "gf-nonexistent")
+	found, err = s.GetByKey(ctx, "sk-nonexistent")
 	assert.Error(t, err)
 	assert.Nil(t, found)
 }
@@ -143,7 +143,7 @@ func TestAPIKeyStore_Regenerate(t *testing.T) {
 	newKey, err := s.Regenerate(ctx, ak.ID)
 	require.NoError(t, err)
 	assert.NotEqual(t, oldKey, newKey)
-	assert.True(t, strings.HasPrefix(newKey, "gf-"))
+	assert.True(t, strings.HasPrefix(newKey, "sk-"))
 	assert.Equal(t, 51, len(newKey))
 
 	// Old key should no longer work

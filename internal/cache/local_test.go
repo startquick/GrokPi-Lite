@@ -61,8 +61,8 @@ func TestGetStats_IgnoresNonWhitelisted(t *testing.T) {
 	imgDir := filepath.Join(base, "tmp", "image")
 
 	createTestFile(t, imgDir, "a.jpg", 1024)
-	createTestFile(t, imgDir, "b.txt", 2048)   // not whitelisted
-	createTestFile(t, imgDir, "c.html", 512)    // not whitelisted
+	createTestFile(t, imgDir, "b.txt", 2048) // not whitelisted
+	createTestFile(t, imgDir, "c.html", 512) // not whitelisted
 
 	stats := svc.GetStats("image")
 	if stats.Count != 1 {

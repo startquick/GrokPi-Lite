@@ -11,13 +11,13 @@ import (
 	"gorm.io/gorm"
 )
 
-// generateAPIKey generates a new API key with "gf-" prefix + 48 hex chars = 51 chars total.
+// generateAPIKey generates a new API key with "sk-" prefix + 48 hex chars.
 func generateAPIKey() (string, error) {
 	b := make([]byte, 24)
 	if _, err := rand.Read(b); err != nil {
 		return "", fmt.Errorf("generate api key: %w", err)
 	}
-	return "gf-" + hex.EncodeToString(b), nil
+	return "sk-" + hex.EncodeToString(b), nil
 }
 
 // APIKeyStore handles API key persistence and queries.

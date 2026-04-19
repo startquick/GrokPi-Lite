@@ -14,7 +14,7 @@ docs/design/
 docs/grok2api-callchain-diff.md
 docs/origin_error_handle.md
 poc/
-scripts/
+# scripts/ (unignored to allow pushing admin scripts)
 
 # Next.js (web/)
 web/.next/

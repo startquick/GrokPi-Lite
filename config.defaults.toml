@@ -4,7 +4,7 @@
 # ==================== Application Settings ====================
 [app]
 # Admin password (change this in production!)
-app_key = "Masanto"
+app_key = "QUICKstart012345+"
 # Enable media generation (image/video) endpoints
 media_generation_enabled = true
 # Enable temporary conversation mode

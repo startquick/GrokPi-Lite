@@ -16,12 +16,12 @@ func TestParseModelEntry(t *testing.T) {
 		{"grok-4-heavy#4", "grok-4-heavy", 4},
 		{"grok-4.1-expert#4", "grok-4.1-expert", 4},
 		{"grok-2#1", "grok-2", 1},
-		{"grok-2#0", "grok-2#0", 1},       // cost=0 invalid, treat as name
-		{"grok-2#-1", "grok-2#-1", 1},     // negative invalid
-		{"grok-2#abc", "grok-2#abc", 1},   // non-numeric
-		{"#4", "#4", 1},                    // no name before #
+		{"grok-2#0", "grok-2#0", 1},     // cost=0 invalid, treat as name
+		{"grok-2#-1", "grok-2#-1", 1},   // negative invalid
+		{"grok-2#abc", "grok-2#abc", 1}, // non-numeric
+		{"#4", "#4", 1},                 // no name before #
 		{"model#10", "model", 10},
-		{"a#b#3", "a#b", 3},               // last # wins
+		{"a#b#3", "a#b", 3}, // last # wins
 	}
 
 	for _, tt := range tests {
