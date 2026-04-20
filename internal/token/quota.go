@@ -7,11 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	http "github.com/bogdanfinn/fhttp"
 	tls_client "github.com/bogdanfinn/tls-client"
+	"github.com/crmmc/grokpi/internal/config"
 	"github.com/crmmc/grokpi/internal/store"
+	"github.com/crmmc/grokpi/internal/xai"
 )
 
 var (
@@ -20,6 +23,18 @@ var (
 	// ErrTokenNotFound is returned when token ID does not exist.
 	ErrTokenNotFound = errors.New("token not found")
 )
+
+// ImportProfile captures the upstream-derived plan classification for a token.
+type ImportProfile struct {
+	Pool              string
+	Priority          int
+	ChatQuota         int
+	InitialChatQuota  int
+	ImageQuota        int
+	InitialImageQuota int
+	VideoQuota        int
+	InitialVideoQuota int
+}
 
 // RateLimitsRequest is the request body for rate-limits API.
 type RateLimitsRequest struct {
@@ -35,6 +50,7 @@ type RateLimitsResponse struct {
 
 const rateLimitsPath = "/rest/rate-limits"
 const minCoolingDuration = 5 * time.Minute
+const premiumQuotaThreshold = 30
 
 // Consume deducts quota from the token for the given category.
 // cost allows variable deduction for different model types.
@@ -93,8 +109,8 @@ func (m *TokenManager) SyncQuota(ctx context.Context, token *store.Token, baseUR
 	token.InitialChatQuota = resp.RemainingQueries
 
 	// Auto-assign Pool and Priority based on quota capacity.
-	// Premium accounts on grok-3 typically receive >= 40 queries.
-	if token.InitialChatQuota >= 30 {
+	// Premium accounts typically receive materially higher query limits.
+	if token.InitialChatQuota >= premiumQuotaThreshold {
 		if token.Pool == "" {
 			token.Pool = PoolSuper
 		}
@@ -167,7 +183,7 @@ func fetchRateLimits(ctx context.Context, authToken, baseURL string) (*RateLimit
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("rate-limits API returned %d", resp.StatusCode)
+		return nil, classifyRateLimitsError(resp)
 	}
 
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
@@ -181,6 +197,81 @@ func fetchRateLimits(ctx context.Context, authToken, baseURL string) (*RateLimit
 	}
 
 	return &result, nil
+}
+
+// DetectImportProfile queries upstream quota and derives a simple free vs paid
+// classification using the existing pool model. Higher-capacity accounts map to
+// PoolSuper with elevated priority; everything else maps to PoolBasic.
+func DetectImportProfile(ctx context.Context, authToken, baseURL string, cfg *config.TokenConfig) (*ImportProfile, error) {
+	resp, err := fetchRateLimits(ctx, authToken, baseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	chatQuota := resp.RemainingQueries
+	pool, priority := classifyQuotaCapacity(chatQuota)
+	imageQuota := 20
+	videoQuota := 10
+	if cfg != nil {
+		if cfg.DefaultImageQuota > 0 {
+			imageQuota = cfg.DefaultImageQuota
+		}
+		if cfg.DefaultVideoQuota > 0 {
+			videoQuota = cfg.DefaultVideoQuota
+		}
+	}
+
+	return &ImportProfile{
+		Pool:              pool,
+		Priority:          priority,
+		ChatQuota:         chatQuota,
+		InitialChatQuota:  chatQuota,
+		ImageQuota:        imageQuota,
+		InitialImageQuota: imageQuota,
+		VideoQuota:        videoQuota,
+		InitialVideoQuota: videoQuota,
+	}, nil
+}
+
+func classifyQuotaCapacity(chatQuota int) (pool string, priority int) {
+	if chatQuota >= premiumQuotaThreshold {
+		return PoolSuper, 10
+	}
+	return PoolBasic, 0
+}
+
+func classifyRateLimitsError(resp *http.Response) error {
+	if resp == nil {
+		return errors.New("rate-limits API returned nil response")
+	}
+
+	if resp.StatusCode == http.StatusForbidden {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		if looksLikeCloudflareChallenge(string(body), resp) {
+			return xai.ErrCFChallenge
+		}
+		return fmt.Errorf("rate-limits API returned %d", resp.StatusCode)
+	}
+
+	return fmt.Errorf("rate-limits API returned %d", resp.StatusCode)
+}
+
+func looksLikeCloudflareChallenge(body string, resp *http.Response) bool {
+	if resp == nil {
+		return false
+	}
+
+	server := strings.ToLower(resp.Header.Get("Server"))
+	contentType := strings.ToLower(resp.Header.Get("Content-Type"))
+	challenge := strings.ToLower(resp.Header.Get("Cf-Mitigated"))
+	lowerBody := strings.ToLower(body)
+
+	return strings.Contains(server, "cloudflare") ||
+		strings.Contains(contentType, "text/html") ||
+		strings.Contains(challenge, "challenge") ||
+		strings.Contains(lowerBody, "cloudflare") ||
+		strings.Contains(lowerBody, "cf-browser-verification") ||
+		strings.Contains(lowerBody, "attention required")
 }
 
 func (m *TokenManager) coolingDurationForToken(token *store.Token) time.Duration {

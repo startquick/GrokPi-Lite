@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -31,6 +32,7 @@ var (
 
 const serverWriteTimeout = 330 * time.Second
 const tokenFlushInterval = 30 * time.Second
+const defaultAdminAppKey = "QUICKstart012345+"
 
 func main() {
 	// Parse flags
@@ -49,6 +51,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to load config: %v\n", err)
 		os.Exit(1)
 	}
+	if err := validateStartupConfig(cfg); err != nil {
+		fmt.Fprintf(os.Stderr, "invalid startup config: %v\n", err)
+		os.Exit(1)
+	}
 
 	// Setup logging
 	logging.Setup(cfg.App.LogLevel, cfg.App.LogJSON, &logging.FileConfig{
@@ -57,9 +63,6 @@ func main() {
 		MaxBackups: cfg.App.LogMaxBackups,
 	})
 	logging.Info("starting grokpi", "version", version, "config", *configPath)
-	if cfg.App.AppKey == "grokpi" {
-		logging.Warn("default admin app key is in use; change app.app_key before exposing the service")
-	}
 
 	// Open database
 	db, err := store.Open(cfg)
@@ -400,4 +403,16 @@ func newImagineClient(runtime *config.Runtime, token string) flow.ImagineGenerat
 		opts = append(opts, xai.WithImagineCFCookies(cfg.Proxy.CFCookies))
 	}
 	return xai.NewImagineClient(token, opts...)
+}
+
+func validateStartupConfig(cfg *config.Config) error {
+	if cfg == nil {
+		return errors.New("configuration is nil")
+	}
+	switch cfg.App.AppKey {
+	case "", defaultAdminAppKey:
+		return fmt.Errorf("set app.app_key to a unique non-default value")
+	default:
+		return nil
+	}
 }

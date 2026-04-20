@@ -69,6 +69,27 @@ func TestBodySizeLimitMiddleware_ChatCompletionsLargeBody(t *testing.T) {
 	}
 }
 
+func TestBodySizeLimitMiddleware_AnthropicMessagesLargeBody(t *testing.T) {
+	cfg := config.DefaultConfig()
+	handler := bodySizeLimitMiddleware(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	body := bytes.NewReader(make([]byte, 5<<20)) // 5MB < 10MB chat limit
+	req := httptest.NewRequest(http.MethodPost, "/v1/messages", body)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+}
+
 func TestRouteBodyLimit(t *testing.T) {
 	cfg := config.DefaultConfig()
 
@@ -78,6 +99,7 @@ func TestRouteBodyLimit(t *testing.T) {
 		want   int64
 	}{
 		{http.MethodPost, "/v1/chat/completions", cfg.App.ChatBodyLimit},
+		{http.MethodPost, "/v1/messages", cfg.App.ChatBodyLimit},
 		{http.MethodPost, "/v1/tokens", cfg.App.BodyLimit},
 		{http.MethodGet, "/v1/chat/completions", cfg.App.BodyLimit},
 		{http.MethodPut, "/api/config", cfg.App.BodyLimit},
@@ -101,5 +123,8 @@ func TestRouteBodyLimit_CustomConfig(t *testing.T) {
 	}
 	if got := routeBodyLimit(cfg, http.MethodPost, "/v1/chat/completions"); got != 20<<20 {
 		t.Errorf("custom chat body limit = %d, want %d", got, 20<<20)
+	}
+	if got := routeBodyLimit(cfg, http.MethodPost, "/v1/messages"); got != 20<<20 {
+		t.Errorf("custom anthropic chat body limit = %d, want %d", got, 20<<20)
 	}
 }

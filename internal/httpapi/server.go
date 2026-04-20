@@ -101,7 +101,6 @@ func (s *Server) setupMiddleware() {
 	s.router.Use(middleware.CleanPath)
 	s.router.Use(securityHeaders)
 	s.router.Use(middleware.RequestID)
-	s.router.Use(middleware.RealIP)
 	s.router.Use(middleware.Recoverer)
 	s.router.Use(debugRequestLogger)
 	if s.runtime != nil {

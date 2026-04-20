@@ -17,6 +17,10 @@ Panduan ini berfokus pada self-hosting di server atau VPS milik sendiri.
 
 Panduan lengkap mengenai spesifikasi VPS, instalasi dependensi (Docker, Go, Make), hingga perintah eksekusi dan *deployment* kini tersedia di dokumen terpisah agar lebih rapi.
 
+Checklist praktis Ubuntu VPS juga tersedia di:
+
+`docs/deployment-checklist-ubuntu.md`
+
 👉 **[Baca Panduan Deployment Lengkap di Sini](docs/deployment.md)**
 
 

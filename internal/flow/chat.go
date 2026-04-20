@@ -108,6 +108,7 @@ func (f *ChatFlow) executeWithRetry(ctx context.Context, req *ChatRequest, pool,
 	tokenRetries := 0
 	var currentToken *store.Token
 	var client xai.Client
+	exclude := make(map[uint]struct{})
 
 	for attempt := 0; attempt < cfg.MaxTokens*cfg.PerTokenRetries; attempt++ {
 		if retryBudgetExceeded(budgetDeadline) {
@@ -124,13 +125,14 @@ func (f *ChatFlow) executeWithRetry(ctx context.Context, req *ChatRequest, pool,
 
 		// Pick new token if needed
 		if currentToken == nil || tokenRetries >= cfg.PerTokenRetries {
-			tok, err := f.tokenSvc.Pick(pool, tkn.CategoryChat)
-			if err != nil && fallback != "" {
-				slog.Debug("flow: primary pool exhausted, trying fallback",
-					"pool", pool, "fallback", fallback, "error", err)
-				tok, err = f.tokenSvc.Pick(fallback, tkn.CategoryChat)
+			tok, err := f.pickChatToken(pool, fallback, exclude)
+			if err != nil && len(exclude) > 0 {
+				// After trying every failed token alternative once in this request,
+				// allow the pool to be revisited instead of hard-failing early.
+				exclude = make(map[uint]struct{})
+				tok, err = f.pickChatToken(pool, fallback, exclude)
 			}
-			if err != nil {
+			if err != nil && fallback != "" {
 				slog.Debug("flow: no token available", "pool", pool, "error", err)
 				lastErr = err
 				continue
@@ -177,6 +179,7 @@ func (f *ChatFlow) executeWithRetry(ctx context.Context, req *ChatRequest, pool,
 
 			// Force swap token on cooling or ErrInvalidToken
 			if errors.Is(err, xai.ErrInvalidToken) || ShouldSwapToken(err, cfg) {
+				exclude[currentToken.ID] = struct{}{}
 				slog.Debug("flow: forcing token swap", "token_id", currentToken.ID, "error", err)
 				currentToken = nil
 			}
@@ -245,6 +248,9 @@ func (f *ChatFlow) executeWithRetry(ctx context.Context, req *ChatRequest, pool,
 		}
 		tokenRetries++
 		if tokenRetries >= cfg.PerTokenRetries || ShouldSwapToken(streamErr, cfg) {
+			if currentToken != nil {
+				exclude[currentToken.ID] = struct{}{}
+			}
 			currentToken = nil
 		}
 	}
@@ -286,6 +292,19 @@ func (f *ChatFlow) filterTags() []string {
 	return f.cfg.FilterTags
 }
 
+func (f *ChatFlow) pickChatToken(pool, fallback string, exclude map[uint]struct{}) (*store.Token, error) {
+	tok, err := f.tokenSvc.PickExcluding(pool, tkn.CategoryChat, exclude)
+	if err == nil {
+		return tok, nil
+	}
+	if fallback != "" {
+		slog.Debug("flow: primary pool exhausted, trying fallback",
+			"pool", pool, "fallback", fallback, "error", err)
+		return f.tokenSvc.PickExcluding(fallback, tkn.CategoryChat, exclude)
+	}
+	return nil, err
+}
+
 func (f *ChatFlow) handleError(tokenID uint, err error, cfg *RetryConfig) {
 	reason := truncateReason(err.Error())
 	if errors.Is(err, xai.ErrInvalidToken) {
@@ -294,8 +313,8 @@ func (f *ChatFlow) handleError(tokenID uint, err error, cfg *RetryConfig) {
 		return
 	}
 	if errors.Is(err, xai.ErrForbidden) {
-		slog.Debug("flow: reporting error (403)", "token_id", tokenID)
-		f.tokenSvc.ReportError(tokenID, reason)
+		slog.Debug("flow: marking token expired (403)", "token_id", tokenID)
+		f.tokenSvc.MarkExpired(tokenID, reason)
 		return
 	}
 	if errors.Is(err, xai.ErrCFChallenge) {

@@ -39,7 +39,7 @@ func buildAdminRateLimit(getConfig func() *config.Config) func(http.Handler) htt
 				return
 			}
 
-			ip := r.RemoteAddr
+			ip := effectiveClientIP(r)
 			now := time.Now().Unix()
 
 			entryI, _ := failMap.LoadOrStore(ip, &rateLimitEntry{})

@@ -7,12 +7,17 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/crmmc/grokpi/internal/config"
 	"github.com/crmmc/grokpi/internal/store"
 	"github.com/crmmc/grokpi/internal/token"
 	"github.com/go-chi/chi/v5"
 )
+
+const defaultTokenImportBaseURL = "https://grok.com"
+
+type tokenImportProfiler func(ctx context.Context, authToken string, cfg *config.TokenConfig) (*token.ImportProfile, error)
 
 // handleBatchTokens returns a handler for batch token operations.
 func handleBatchTokens(ts TokenStoreInterface, syncer TokenPoolSyncer, cfg *config.Config) http.HandlerFunc {
@@ -25,6 +30,10 @@ func handleBatchTokens(ts TokenStoreInterface, syncer TokenPoolSyncer, cfg *conf
 }
 
 func handleBatchTokensFromProvider(ts TokenStoreInterface, syncer TokenPoolSyncer, getCfg func() *config.TokenConfig) http.HandlerFunc {
+	return handleBatchTokensFromProviderWithProfiler(ts, syncer, getCfg, defaultTokenImportProfiler(defaultTokenImportBaseURL))
+}
+
+func handleBatchTokensFromProviderWithProfiler(ts TokenStoreInterface, syncer TokenPoolSyncer, getCfg func() *config.TokenConfig, profiler tokenImportProfiler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req BatchTokenRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -42,7 +51,7 @@ func handleBatchTokensFromProvider(ts TokenStoreInterface, syncer TokenPoolSynce
 			if tokenCfg == nil {
 				tokenCfg = &config.TokenConfig{}
 			}
-			resp = handleBatchImport(r.Context(), ts, syncer, req, tokenCfg)
+			resp = handleBatchImport(r.Context(), ts, syncer, req, tokenCfg, profiler)
 		case BatchOpExport:
 			resp = handleBatchExport(r.Context(), ts, req.IDs, r.URL.Query().Get("raw") == "true")
 		case BatchOpDelete:
@@ -116,8 +125,14 @@ func resolveImportQuota(quota *int, cfg *config.TokenConfig) int {
 	return 50 // hardcoded fallback
 }
 
+func defaultTokenImportProfiler(baseURL string) tokenImportProfiler {
+	return func(ctx context.Context, authToken string, cfg *config.TokenConfig) (*token.ImportProfile, error) {
+		return token.DetectImportProfile(ctx, authToken, baseURL, cfg)
+	}
+}
+
 // handleBatchImport imports multiple tokens.
-func handleBatchImport(ctx context.Context, ts TokenStoreInterface, syncer TokenPoolSyncer, req BatchTokenRequest, cfg *config.TokenConfig) BatchTokenResponse {
+func handleBatchImport(ctx context.Context, ts TokenStoreInterface, syncer TokenPoolSyncer, req BatchTokenRequest, cfg *config.TokenConfig, profiler tokenImportProfiler) BatchTokenResponse {
 	resp := BatchTokenResponse{Operation: BatchOpImport}
 
 	// Resolve import status: default to "active", only allow "active" or "disabled"
@@ -159,10 +174,20 @@ func handleBatchImport(ctx context.Context, ts TokenStoreInterface, syncer Token
 		}
 		pool := req.Pool
 		if pool == "" {
-			if cfg != nil && cfg.PreferredPool != "" {
-				pool = cfg.PreferredPool
+			pool = token.PoolBasic
+		}
+		priority := req.Priority
+		remark := req.Remark
+		if req.Pool == "" && req.Quota == nil && profiler != nil {
+			if profile, err := profiler(ctx, tokenStr, cfg); err == nil && profile != nil {
+				chatQ = profile.ChatQuota
+				imageQ = profile.ImageQuota
+				videoQ = profile.VideoQuota
+				pool = profile.Pool
+				priority = profile.Priority
+				remark = appendImportRemark(remark, classifyImportRemark(profile.Pool))
 			} else {
-				pool = "ssoBasic"
+				remark = appendImportRemark(remark, "pending auto-detect")
 			}
 		}
 
@@ -175,9 +200,9 @@ func handleBatchImport(ctx context.Context, ts TokenStoreInterface, syncer Token
 			InitialImageQuota: imageQ,
 			VideoQuota:        videoQ,
 			InitialVideoQuota: videoQ,
-			Priority:          req.Priority,
+			Priority:          priority,
 			Status:            importStatus,
-			Remark:            req.Remark,
+			Remark:            remark,
 			NsfwEnabled:       req.NsfwEnabled != nil && *req.NsfwEnabled,
 		}
 
@@ -198,6 +223,28 @@ func handleBatchImport(ctx context.Context, ts TokenStoreInterface, syncer Token
 	}
 
 	return resp
+}
+
+func classifyImportRemark(pool string) string {
+	switch pool {
+	case token.PoolSuper:
+		return "auto-detected: paid"
+	default:
+		return "auto-detected: free"
+	}
+}
+
+func appendImportRemark(existing, extra string) string {
+	existing = strings.TrimSpace(existing)
+	extra = strings.TrimSpace(extra)
+	switch {
+	case existing == "":
+		return extra
+	case extra == "":
+		return existing
+	default:
+		return existing + " | " + extra
+	}
 }
 
 // handleBatchExport exports tokens. If ids is non-empty, only exports those tokens.

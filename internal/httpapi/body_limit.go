@@ -31,7 +31,7 @@ func bodySizeLimitRuntimeMiddleware(runtime *config.Runtime) func(http.Handler) 
 // routeBodyLimit returns the maximum body size for a given route.
 // Values are read from config for hot-reload support.
 func routeBodyLimit(cfg *config.Config, method, path string) int64 {
-	if method == http.MethodPost && path == "/v1/chat/completions" {
+	if isChatLikeRoute(method, path) {
 		if cfg != nil && cfg.App.ChatBodyLimit > 0 {
 			return cfg.App.ChatBodyLimit
 		}

@@ -24,7 +24,8 @@ func TestRouteTimeout(t *testing.T) {
 		path   string
 		want   time.Duration
 	}{
-		{name: "chat uses proxy.timeout", method: http.MethodPost, path: "/v1/chat/completions", want: 180 * time.Second},
+		{name: "openai chat uses proxy.timeout", method: http.MethodPost, path: "/v1/chat/completions", want: 180 * time.Second},
+		{name: "anthropic messages uses proxy.timeout", method: http.MethodPost, path: "/v1/messages", want: 180 * time.Second},
 		{name: "other POST uses app.request_timeout", method: http.MethodPost, path: "/admin/tokens/batch", want: 90 * time.Second},
 		{name: "GET uses app.request_timeout", method: http.MethodGet, path: "/v1/chat/completions", want: 90 * time.Second},
 	}
@@ -82,7 +83,8 @@ func TestRequestTimeoutMiddleware_UsesRouteSpecificDeadline(t *testing.T) {
 		path string
 		want time.Duration
 	}{
-		{name: "chat route uses proxy.timeout", path: "/v1/chat/completions", want: 180 * time.Second},
+		{name: "openai chat route uses proxy.timeout", path: "/v1/chat/completions", want: 180 * time.Second},
+		{name: "anthropic messages route uses proxy.timeout", path: "/v1/messages", want: 180 * time.Second},
 		{name: "default route uses app.request_timeout", path: "/admin/tokens", want: 90 * time.Second},
 	}
 
@@ -131,6 +133,14 @@ func TestRequestTimeoutMiddleware_HotReload(t *testing.T) {
 	got, _ = strconv.Atoi(rr.Body.String())
 	if got < 598 || got > 600 {
 		t.Fatalf("after hot-reload: deadline = %ds, want ~600s", got)
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	got, _ = strconv.Atoi(rr.Body.String())
+	if got < 598 || got > 600 {
+		t.Fatalf("anthropic after hot-reload: deadline = %ds, want ~600s", got)
 	}
 }
 

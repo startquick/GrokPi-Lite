@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -217,7 +219,7 @@ func TestAdminToken_BatchImport_UsesLatestConfig(t *testing.T) {
 		DefaultImageQuota: 20,
 		DefaultVideoQuota: 10,
 	}
-	handler := handleBatchTokensFromProvider(mockStore, nil, func() *config.TokenConfig { return current })
+	handler := handleBatchTokensFromProviderWithProfiler(mockStore, nil, func() *config.TokenConfig { return current }, nil)
 
 	current = &config.TokenConfig{
 		DefaultChatQuota:  70,
@@ -338,7 +340,7 @@ func TestAdminToken_DeleteToken_NotFound(t *testing.T) {
 
 func TestAdminToken_BatchImport(t *testing.T) {
 	mockStore := newMockTokenStore()
-	handler := handleBatchTokens(mockStore, nil, nil)
+	handler := handleBatchTokensFromProviderWithProfiler(mockStore, nil, func() *config.TokenConfig { return nil }, nil)
 
 	body := `{"operation":"import","tokens":["token1_long_enough_for_test","token2_long_enough_for_test","token3_long_enough_for_test"],"pool":"default","quota":100}`
 	req := httptest.NewRequest(http.MethodPost, "/admin/tokens/batch", bytes.NewBufferString(body))
@@ -375,7 +377,7 @@ func TestAdminToken_BatchExport(t *testing.T) {
 	mockStore.tokens[1] = &store.Token{ID: 1, Token: "token1", Status: store.TokenStatusActive}
 	mockStore.tokens[2] = &store.Token{ID: 2, Token: "token2", Status: store.TokenStatusActive}
 
-	handler := handleBatchTokens(mockStore, nil, nil)
+	handler := handleBatchTokensFromProviderWithProfiler(mockStore, nil, func() *config.TokenConfig { return nil }, nil)
 
 	body := `{"operation":"export"}`
 	req := httptest.NewRequest(http.MethodPost, "/admin/tokens/batch", bytes.NewBufferString(body))
@@ -409,7 +411,7 @@ func TestAdminToken_BatchExportRaw(t *testing.T) {
 	mockStore.tokens[1] = &store.Token{ID: 1, Token: "token1", Status: store.TokenStatusActive}
 	mockStore.tokens[2] = &store.Token{ID: 2, Token: "token2", Status: store.TokenStatusActive}
 
-	handler := handleBatchTokens(mockStore, nil, nil)
+	handler := handleBatchTokensFromProviderWithProfiler(mockStore, nil, func() *config.TokenConfig { return nil }, nil)
 
 	body := `{"operation":"export"}`
 	req := httptest.NewRequest(http.MethodPost, "/admin/tokens/batch?raw=true", bytes.NewBufferString(body))
@@ -444,7 +446,7 @@ func TestAdminToken_BatchDelete(t *testing.T) {
 	mockStore.tokens[2] = &store.Token{ID: 2, Token: "token2"}
 	mockStore.tokens[3] = &store.Token{ID: 3, Token: "token3"}
 
-	handler := handleBatchTokens(mockStore, nil, nil)
+	handler := handleBatchTokensFromProviderWithProfiler(mockStore, nil, func() *config.TokenConfig { return nil }, nil)
 
 	body := `{"operation":"delete","ids":[1,3]}`
 	req := httptest.NewRequest(http.MethodPost, "/admin/tokens/batch", bytes.NewBufferString(body))
@@ -478,7 +480,7 @@ func TestAdminToken_BatchDelete(t *testing.T) {
 
 func TestAdminToken_BatchInvalidOperation(t *testing.T) {
 	mockStore := newMockTokenStore()
-	handler := handleBatchTokens(mockStore, nil, nil)
+	handler := handleBatchTokensFromProviderWithProfiler(mockStore, nil, func() *config.TokenConfig { return nil }, nil)
 
 	body := `{"operation":"invalid"}`
 	req := httptest.NewRequest(http.MethodPost, "/admin/tokens/batch", bytes.NewBufferString(body))
@@ -1271,7 +1273,7 @@ func TestHandleBatchImport_Priority(t *testing.T) {
 		Priority:  3,
 	}
 
-	resp := handleBatchImport(context.Background(), mockStore, nil, req, cfg)
+	resp := handleBatchImport(context.Background(), mockStore, nil, req, cfg, nil)
 	if resp.Success != 1 {
 		t.Fatalf("expected 1 success, got %d", resp.Success)
 	}
@@ -1294,7 +1296,7 @@ func TestHandleBatchImport_DefaultPriority(t *testing.T) {
 		Pool:      "ssoBasic",
 	}
 
-	resp := handleBatchImport(context.Background(), mockStore, nil, req, cfg)
+	resp := handleBatchImport(context.Background(), mockStore, nil, req, cfg, nil)
 	if resp.Success != 1 {
 		t.Fatalf("expected 1 success, got %d", resp.Success)
 	}
@@ -1318,7 +1320,7 @@ func TestHandleBatchImport_AutoQuota(t *testing.T) {
 		// Quota is nil (*int), should auto-resolve to 200
 	}
 
-	resp := handleBatchImport(context.Background(), mockStore, nil, req, cfg)
+	resp := handleBatchImport(context.Background(), mockStore, nil, req, cfg, nil)
 	if resp.Success != 1 {
 		t.Fatalf("expected 1 success, got %d", resp.Success)
 	}
@@ -1424,7 +1426,7 @@ func TestHandleBatchImport_StatusDisabled(t *testing.T) {
 		Status:    "disabled",
 	}
 
-	resp := handleBatchImport(context.Background(), mockStore, nil, req, cfg)
+	resp := handleBatchImport(context.Background(), mockStore, nil, req, cfg, nil)
 	if resp.Success != 1 {
 		t.Fatalf("expected 1 success, got %d", resp.Success)
 	}
@@ -1447,7 +1449,7 @@ func TestHandleBatchImport_StatusDefaultsToActive(t *testing.T) {
 		// Status is empty string, should default to "active"
 	}
 
-	resp := handleBatchImport(context.Background(), mockStore, nil, req, cfg)
+	resp := handleBatchImport(context.Background(), mockStore, nil, req, cfg, nil)
 	if resp.Success != 1 {
 		t.Fatalf("expected 1 success, got %d", resp.Success)
 	}
@@ -1470,7 +1472,7 @@ func TestHandleBatchImport_InvalidStatusDefaultsToActive(t *testing.T) {
 		Status:    "expired", // invalid for import
 	}
 
-	resp := handleBatchImport(context.Background(), mockStore, nil, req, cfg)
+	resp := handleBatchImport(context.Background(), mockStore, nil, req, cfg, nil)
 	if resp.Success != 1 {
 		t.Fatalf("expected 1 success, got %d", resp.Success)
 	}
@@ -1546,7 +1548,7 @@ func TestBatchExport_WithIDs(t *testing.T) {
 	mockStore.tokens[2] = &store.Token{ID: 2, Token: "token2"}
 	mockStore.tokens[3] = &store.Token{ID: 3, Token: "token3"}
 
-	handler := handleBatchTokens(mockStore, nil, nil)
+	handler := handleBatchTokensFromProviderWithProfiler(mockStore, nil, func() *config.TokenConfig { return nil }, nil)
 
 	body := `{"operation":"export","ids":[1,3]}`
 	req := httptest.NewRequest(http.MethodPost, "/admin/tokens/batch?raw=true", bytes.NewBufferString(body))
@@ -1575,7 +1577,7 @@ func TestBatchExport_WithoutIDs_ExportsAll(t *testing.T) {
 	mockStore.tokens[2] = &store.Token{ID: 2, Token: "token2"}
 	mockStore.tokens[3] = &store.Token{ID: 3, Token: "token3"}
 
-	handler := handleBatchTokens(mockStore, nil, nil)
+	handler := handleBatchTokensFromProviderWithProfiler(mockStore, nil, func() *config.TokenConfig { return nil }, nil)
 
 	body := `{"operation":"export"}`
 	req := httptest.NewRequest(http.MethodPost, "/admin/tokens/batch?raw=true", bytes.NewBufferString(body))
@@ -1588,5 +1590,79 @@ func TestBatchExport_WithoutIDs_ExportsAll(t *testing.T) {
 
 	if len(resp.RawTokens) != 3 {
 		t.Errorf("expected 3 raw tokens (all), got %d", len(resp.RawTokens))
+	}
+}
+
+func TestHandleBatchImport_AutoDetectsPaidVsFree(t *testing.T) {
+	mockStore := newMockTokenStore()
+	cfg := &config.TokenConfig{DefaultImageQuota: 11, DefaultVideoQuota: 6}
+
+	freeProfiler := func(ctx context.Context, authToken string, cfg *config.TokenConfig) (*tokenPkg.ImportProfile, error) {
+		return &tokenPkg.ImportProfile{
+			Pool:              tokenPkg.PoolBasic,
+			Priority:          0,
+			ChatQuota:         12,
+			InitialChatQuota:  12,
+			ImageQuota:        11,
+			InitialImageQuota: 11,
+			VideoQuota:        6,
+			InitialVideoQuota: 6,
+		}, nil
+	}
+	paidProfiler := func(ctx context.Context, authToken string, cfg *config.TokenConfig) (*tokenPkg.ImportProfile, error) {
+		return &tokenPkg.ImportProfile{
+			Pool:              tokenPkg.PoolSuper,
+			Priority:          10,
+			ChatQuota:         45,
+			InitialChatQuota:  45,
+			ImageQuota:        11,
+			InitialImageQuota: 11,
+			VideoQuota:        6,
+			InitialVideoQuota: 6,
+		}, nil
+	}
+
+	freeReq := BatchTokenRequest{Operation: BatchOpImport, Tokens: []string{"free_token_long_enough_for_test"}}
+	freeResp := handleBatchImport(context.Background(), mockStore, nil, freeReq, cfg, freeProfiler)
+	if freeResp.Success != 1 {
+		t.Fatalf("expected 1 imported free token, got %d", freeResp.Success)
+	}
+	if mockStore.tokens[1].Pool != tokenPkg.PoolBasic || mockStore.tokens[1].Priority != 0 || mockStore.tokens[1].ChatQuota != 12 {
+		t.Fatalf("unexpected free token profile: %+v", mockStore.tokens[1])
+	}
+	if !strings.Contains(mockStore.tokens[1].Remark, "auto-detected: free") {
+		t.Fatalf("expected free remark, got %q", mockStore.tokens[1].Remark)
+	}
+
+	paidReq := BatchTokenRequest{Operation: BatchOpImport, Tokens: []string{"paid_token_long_enough_for_test"}}
+	paidResp := handleBatchImport(context.Background(), mockStore, nil, paidReq, cfg, paidProfiler)
+	if paidResp.Success != 1 {
+		t.Fatalf("expected 1 imported paid token, got %d", paidResp.Success)
+	}
+	if mockStore.tokens[2].Pool != tokenPkg.PoolSuper || mockStore.tokens[2].Priority != 10 || mockStore.tokens[2].ChatQuota != 45 {
+		t.Fatalf("unexpected paid token profile: %+v", mockStore.tokens[2])
+	}
+	if !strings.Contains(mockStore.tokens[2].Remark, "auto-detected: paid") {
+		t.Fatalf("expected paid remark, got %q", mockStore.tokens[2].Remark)
+	}
+}
+
+func TestHandleBatchImport_ProfileFailureFallsBackToBasicPending(t *testing.T) {
+	mockStore := newMockTokenStore()
+	cfg := &config.TokenConfig{DefaultChatQuota: 80}
+
+	req := BatchTokenRequest{Operation: BatchOpImport, Tokens: []string{"token_long_enough_for_pending_test"}}
+	resp := handleBatchImport(context.Background(), mockStore, nil, req, cfg, func(ctx context.Context, authToken string, cfg *config.TokenConfig) (*tokenPkg.ImportProfile, error) {
+		return nil, errors.New("upstream unavailable")
+	})
+	if resp.Success != 1 {
+		t.Fatalf("expected import success, got %d", resp.Success)
+	}
+	tok := mockStore.tokens[1]
+	if tok.Pool != tokenPkg.PoolBasic || tok.Priority != 0 || tok.ChatQuota != 80 {
+		t.Fatalf("unexpected fallback token: %+v", tok)
+	}
+	if !strings.Contains(tok.Remark, "pending auto-detect") {
+		t.Fatalf("expected pending remark, got %q", tok.Remark)
 	}
 }

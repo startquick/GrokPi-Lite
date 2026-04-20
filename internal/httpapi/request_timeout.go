@@ -46,7 +46,7 @@ func requestTimeoutRuntimeMiddleware(runtime *config.Runtime) func(http.Handler)
 // Chat completions use the configurable proxy.timeout (default 300s);
 // all other routes use the configurable app.request_timeout (default 60s).
 func routeTimeout(cfg *config.Config, method, path string) time.Duration {
-	if method == http.MethodPost && path == "/v1/chat/completions" {
+	if isChatLikeRoute(method, path) {
 		if cfg != nil && cfg.Proxy.Timeout > 0 {
 			return time.Duration(cfg.Proxy.Timeout) * time.Second
 		}

@@ -3,6 +3,7 @@ package token
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/crmmc/grokpi/internal/config"
 	"github.com/crmmc/grokpi/internal/store"
+	"github.com/crmmc/grokpi/internal/xai"
 )
 
 func TestQuota_Consume(t *testing.T) {
@@ -299,5 +301,62 @@ func TestSyncQuota_RestoresImageVideoQuotas(t *testing.T) {
 	}
 	if token.InitialVideoQuota != 5 {
 		t.Errorf("expected InitialVideoQuota=5, got %d", token.InitialVideoQuota)
+	}
+}
+
+func TestFetchRateLimits_CFChallenge403(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Server", "cloudflare")
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte("<html><title>Attention Required! | Cloudflare</title></html>"))
+	}))
+	defer server.Close()
+
+	_, err := fetchRateLimits(context.Background(), "test-token", server.URL)
+	if !errors.Is(err, xai.ErrCFChallenge) {
+		t.Fatalf("expected ErrCFChallenge, got %v", err)
+	}
+}
+
+func TestDetectImportProfile_ClassifiesPaidAndFree(t *testing.T) {
+	tests := []struct {
+		name      string
+		remaining int
+		wantPool  string
+		wantPrio  int
+	}{
+		{name: "paid token", remaining: 50, wantPool: PoolSuper, wantPrio: 10},
+		{name: "free token", remaining: 12, wantPool: PoolBasic, wantPrio: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				resp := RateLimitsResponse{RemainingQueries: tt.remaining}
+				_ = json.NewEncoder(w).Encode(resp)
+			}))
+			defer server.Close()
+
+			profile, err := DetectImportProfile(context.Background(), "test-token", server.URL, &config.TokenConfig{
+				DefaultImageQuota: 9,
+				DefaultVideoQuota: 4,
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if profile.Pool != tt.wantPool {
+				t.Fatalf("Pool = %s, want %s", profile.Pool, tt.wantPool)
+			}
+			if profile.Priority != tt.wantPrio {
+				t.Fatalf("Priority = %d, want %d", profile.Priority, tt.wantPrio)
+			}
+			if profile.ChatQuota != tt.remaining {
+				t.Fatalf("ChatQuota = %d, want %d", profile.ChatQuota, tt.remaining)
+			}
+			if profile.ImageQuota != 9 || profile.VideoQuota != 4 {
+				t.Fatalf("expected image/video quotas 9/4, got %d/%d", profile.ImageQuota, profile.VideoQuota)
+			}
+		})
 	}
 }

@@ -8,9 +8,10 @@ RUN useradd -m -u 1000 grokpi
 WORKDIR /app
 
 COPY bin/grokpi /usr/local/bin/grokpi
-COPY config.defaults.toml /app/config.toml
+COPY config.defaults.toml /app/config.defaults.toml
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-RUN chmod +x /usr/local/bin/grokpi && \
+RUN chmod +x /usr/local/bin/grokpi /usr/local/bin/docker-entrypoint.sh && \
     mkdir -p /app/data /app/logs && \
     chown -R grokpi:grokpi /app
 
@@ -19,5 +20,5 @@ USER grokpi
 VOLUME ["/app/data", "/app/logs"]
 EXPOSE 8080
 
-ENTRYPOINT ["/usr/local/bin/grokpi"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["-config", "/app/config.toml"]

@@ -331,6 +331,68 @@ func TestChatFlow_TokenRotation(t *testing.T) {
 	}
 }
 
+func TestChatFlow_TokenRotation_ExcludesPreviouslyFailedActiveToken(t *testing.T) {
+	tokenSvc := &mockTokenService{
+		tokens: []*store.Token{
+			{ID: 1, Token: "tok1", Pool: "basic"},
+			{ID: 2, Token: "tok2", Pool: "basic"},
+			{ID: 3, Token: "tok3", Pool: "basic"},
+		},
+	}
+
+	var usedTokens []string
+	var mu sync.Mutex
+	attempts := make(map[string]int)
+
+	clientFactory := func(token string) xai.Client {
+		mu.Lock()
+		usedTokens = append(usedTokens, token)
+		attempts[token]++
+		count := attempts[token]
+		mu.Unlock()
+
+		if token == "tok3" {
+			respData := `{"result":{"response":{"token":"Success","isThinking":false}}}`
+			return &mockXAIClient{events: []xai.StreamEvent{{Data: json.RawMessage(respData)}}}
+		}
+
+		// Generic retryable failure: token remains active, so exclusion must drive rotation.
+		if count == 1 {
+			return &mockXAIClient{chatErr: errors.New("503 upstream unavailable")}
+		}
+
+		return &mockXAIClient{chatErr: errors.New("503 upstream unavailable again")}
+	}
+
+	cfg := &ChatFlowConfig{RetryConfig: &RetryConfig{
+		MaxTokens:       3,
+		PerTokenRetries: 1,
+		BaseDelay:       time.Millisecond,
+		MaxDelay:        5 * time.Millisecond,
+		JitterFactor:    0,
+	}, TokenConfig: testFlowTokenConfig()}
+	flow := NewChatFlow(tokenSvc, clientFactory, cfg)
+
+	req := &ChatRequest{
+		Messages: []Message{{Role: "user", Content: "Hi"}},
+		Model:    "grok-2",
+	}
+
+	ch, err := flow.Complete(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Complete() error = %v", err)
+	}
+	for range ch {
+	}
+
+	if len(usedTokens) < 3 {
+		t.Fatalf("expected at least 3 token attempts, got %v", usedTokens)
+	}
+	if usedTokens[0] != "tok1" || usedTokens[1] != "tok2" || usedTokens[2] != "tok3" {
+		t.Fatalf("expected sequential rotation tok1 -> tok2 -> tok3 before reuse, got %v", usedTokens)
+	}
+}
+
 func TestChatFlow_NonRetryableError(t *testing.T) {
 	tokenSvc := &mockTokenService{
 		tokens: []*store.Token{{ID: 1, Token: "tok1", Pool: "basic"}},

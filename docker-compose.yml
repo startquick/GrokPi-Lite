@@ -4,8 +4,6 @@ services:
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     restart: unless-stopped
-    ports:
-      - "8191:8191"
     environment:
       LOG_LEVEL: info
     healthcheck:
@@ -25,7 +23,7 @@ services:
       flaresolverr:
         condition: service_healthy
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - ./config.toml:/app/config.toml
       - ./data:/app/data

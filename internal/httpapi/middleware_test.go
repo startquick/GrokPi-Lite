@@ -473,3 +473,65 @@ func TestAdminRateLimitRuntime_PersistsFailuresAcrossRequests(t *testing.T) {
 		t.Fatalf("expected runtime rate limit to persist, got %d", rec.Code)
 	}
 }
+
+func TestAdminRateLimit_IgnoresSpoofedForwardedIPFromDirectClient(t *testing.T) {
+	cfg := &config.Config{
+		App: config.AppConfig{
+			AdminMaxFails:  1,
+			AdminWindowSec: 300,
+		},
+	}
+
+	handler := AdminRateLimit(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/verify", nil)
+	req.RemoteAddr = "203.0.113.10:1234"
+	req.Header.Set("X-Forwarded-For", "198.51.100.25")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("first request: expected 401, got %d", rec.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/admin/verify", nil)
+	req.RemoteAddr = "203.0.113.10:5678"
+	req.Header.Set("X-Forwarded-For", "198.51.100.26")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("second request: expected 429, got %d", rec.Code)
+	}
+}
+
+func TestAdminRateLimit_TrustsForwardedIPFromLocalProxy(t *testing.T) {
+	cfg := &config.Config{
+		App: config.AppConfig{
+			AdminMaxFails:  1,
+			AdminWindowSec: 300,
+		},
+	}
+
+	handler := AdminRateLimit(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/verify", nil)
+	req.RemoteAddr = "127.0.0.1:1234"
+	req.Header.Set("X-Forwarded-For", "198.51.100.25")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("first request: expected 401, got %d", rec.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/admin/verify", nil)
+	req.RemoteAddr = "127.0.0.1:5678"
+	req.Header.Set("X-Forwarded-For", "198.51.100.25")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("second request: expected 429, got %d", rec.Code)
+	}
+}

@@ -2,6 +2,10 @@
 
 Panduan ini disusun secara komprehensif mulai dari nol (server baru), pengamanan dasar (hardening), hingga siap digunakan di tahap produksi dengan custom domain (HTTPS).
 
+Untuk alur ringkas yang bisa diikuti langkah demi langkah, gunakan juga checklist terpisah:
+
+- [Checklist Deployment Final ke VPS Ubuntu](deployment-checklist-ubuntu.md)
+
 ## 1. Persyaratan Server Minimal
 
 GrokPi dibangun menggunakan bahasa Go yang sangat ringan dan tidak memerlukan banyak *resource*. Berikut adalah rekomendasi VPS (Virtual Private Server) yang Anda butuhkan:
@@ -61,6 +65,8 @@ apt-get install ufw -y
 ufw allow OpenSSH
 ufw allow 80/tcp
 ufw allow 443/tcp
+ufw deny 8080/tcp
+ufw deny 8191/tcp
 
 # Aktifkan firewall
 ufw enable
@@ -149,7 +155,7 @@ make build
 mkdir -p data logs
 sudo chown -R 1000:1000 data logs
 
-# 3. Jalankan Kontainer (Proxy di Background)
+# 3. Jalankan Kontainer (service hanya bind ke localhost)
 docker compose up -d --build
 ```
 Lakukan tes ringan apakah server berjalan di internal: `curl -s http://127.0.0.1:8080/health`.
@@ -196,6 +202,11 @@ Caddy akan memakan waktu sekitar ~10 detik untuk memesan sertifikat dari Let's E
 
 Selamat! Server GrokPi Lite Anda kini live di public network via `https://api.namadomain.com`!
 
+Catatan penting:
+- `docker-compose.yml` hanya bind GrokPi ke `127.0.0.1:8080`, jadi akses publik harus melalui Caddy.
+- FlareSolverr tidak dipublish ke host dan hanya tersedia di internal Docker network.
+- Container akan gagal start jika `config.toml` belum dimount atau masih memakai `app_key` default.
+
 ---
 
 ## 6. Operasional Harian (Maintenance)
@@ -221,10 +232,8 @@ tar czf grokpi-backup-$(date +%F).tar.gz config.toml data/
 Bila Anda mendapat notifikasi pembaruan di Github:
 ```bash
 cd ~/GrokPi-Lite
-# Batalkan modifikasi lokal (seperti chmod) agar git pull tidak conflict
-git checkout -- .
 git pull
 make build
 docker compose up -d --build
 ```
-Log akan mencatat GrokPi sukses *recompiled* ke versi paling mutakhir! Jika terjadi `error: Your local changes... akan di-overwrite`, perintah `git checkout -- .` di atas adalah solusinya.
+Jika Anda menyimpan perubahan lokal pada `config.toml` atau file deploy lain, backup dulu sebelum update dan selesaikan konflik Git secara manual. Hindari perintah destruktif yang membuang perubahan server.
