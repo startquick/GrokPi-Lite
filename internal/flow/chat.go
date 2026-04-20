@@ -294,8 +294,8 @@ func (f *ChatFlow) handleError(tokenID uint, err error, cfg *RetryConfig) {
 		return
 	}
 	if errors.Is(err, xai.ErrForbidden) {
-		slog.Debug("flow: marking token expired (403 token-level)", "token_id", tokenID)
-		f.tokenSvc.MarkExpired(tokenID, reason)
+		slog.Debug("flow: reporting error (403)", "token_id", tokenID)
+		f.tokenSvc.ReportError(tokenID, reason)
 		return
 	}
 	if errors.Is(err, xai.ErrCFChallenge) {
