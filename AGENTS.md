@@ -3,14 +3,17 @@
 ## Repo shape (what matters)
 - Single Go service entrypoint: `cmd/grokpi/main.go`.
 - This is a headless API edition (no UI/frontend).
-- HTTP wiring lives in `internal/httpapi/`; OpenAI-compatible routes are under `/v1/*`, admin routes under `/admin/*`.
+- HTTP wiring lives in `internal/httpapi/`; 
+  - OpenAI-compatible routes: `/v1/chat/completions`, `/v1/models`
+  - Anthropic-compatible routes: `/v1/messages`
+  - admin routes: `/admin/*`
 - Flow orchestration (chat, image, video retry logic) lives in `internal/flow/`.
 - Upstream Grok API client with anti-bot headers in `internal/xai/`.
 - CF auto-refresh via FlareSolverr in `internal/cfrefresh/`.
 
 ## Token & Quota Architecture (Latest)
 - **Automatic Priority Tiers**: When an admin imports Grok SSO tokens, the system contacts `/rest/rate-limits`. If the `grok-3` capacity is >= 30, it is automatically assigned to `PoolSuper` and given `Priority: 10`. Regular accounts fall back to `PoolBasic` with `Priority: 0`. This logic lives in `internal/token/quota.go:SyncQuota`.
-- **Client API Keys**: Use the `sk-...` standard. The endpoint outputs are unmasked in CLI scripts so users can directly copy them.
+- **Client API Keys**: Use the `sk-...` standard. The endpoint outputs are unmasked in CLI scripts so users can directly copy them. Both `Authorization: Bearer <key>` (OpenAI) and `x-api-key: <key>` (Anthropic) headers are natively supported to accommodate multi-platform clients.
 - **Admin CLI**: Do not manually `curl` the admin endpoints to manage tokens/keys. Use the provided interactive scripts:
   - Linux/Mac: `./scripts/linux/grokpi_admin.sh`
   - Windows: `.\scripts\windows\grokpi_admin.ps1`

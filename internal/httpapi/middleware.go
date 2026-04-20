@@ -62,13 +62,18 @@ func APIKeyAuth(akStore APIKeyStoreInterface) func(http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Extract Bearer token
+			// Extract Bearer token or x-api-key
 			auth := r.Header.Get("Authorization")
-			if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
+			xApiKey := r.Header.Get("x-api-key")
+			var token string
+			if auth != "" && strings.HasPrefix(auth, "Bearer ") {
+				token = strings.TrimPrefix(auth, "Bearer ")
+			} else if xApiKey != "" {
+				token = xApiKey
+			} else {
 				WriteError(w, 401, "authentication_error", "invalid_api_key", "Missing API key")
 				return
 			}
-			token := strings.TrimPrefix(auth, "Bearer ")
 
 			// DB lookup
 			apiKey, err := akStore.GetByKey(r.Context(), token)

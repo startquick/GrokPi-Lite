@@ -16,6 +16,7 @@ import (
 	"github.com/crmmc/grokpi/internal/config"
 	"github.com/crmmc/grokpi/internal/flow"
 	"github.com/crmmc/grokpi/internal/httpapi"
+	"github.com/crmmc/grokpi/internal/httpapi/anthropic"
 	"github.com/crmmc/grokpi/internal/httpapi/openai"
 	"github.com/crmmc/grokpi/internal/logging"
 	"github.com/crmmc/grokpi/internal/store"
@@ -248,13 +249,20 @@ func main() {
 		Runtime:   runtimeCfg,
 	}
 
+	// Create Anthropic provider
+	anthropicHandler := &anthropic.Handler{
+		ChatFlow: chatFlow,
+		Cfg:      runtimeCfg.Get(),
+		Runtime:  runtimeCfg,
+	}
+
 	// Create HTTP server
 	srv := httpapi.NewServer(&httpapi.ServerConfig{
 		AppKey:          runtimeCfg.Get().App.AppKey,
 		Version:         version,
 		Config:          runtimeCfg.Get(),
 		Runtime:         runtimeCfg,
-		ChatProvider:    openaiHandler,
+		ChatProviders:   []httpapi.ChatProvider{openaiHandler, anthropicHandler},
 		TokenStore:      tokenStore,
 		TokenRefresher:  tokenSvc,
 		TokenPoolSyncer: tokenSvc,

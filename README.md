@@ -5,7 +5,7 @@ Panduan ini berfokus pada self-hosting di server atau VPS milik sendiri.
 
 ## 1. Fitur Utama
 
-- Endpoint OpenAI-compatible (`/v1/models`, `/v1/chat/completions`)
+- Endpoint Dual-Format: Mendukung protokol **OpenAI-compatible** (`/v1/chat/completions`) dan **Anthropic-compatible** (`/v1/messages`).
 - Endpoint Admin API untuk token pool, API key, riwayat penggunaan, pengaturan, dan cache
 - Binary Go tunggal API-only (Headless) tanpa beban resource Frontend/UI
 - Mekanisme pintar pemulihan Cloudflare (*CF Challenge Bypass*) dengan *circuit breaker* otomatis
@@ -98,7 +98,23 @@ curl -s http://127.0.0.1:8080/v1/chat/completions \
   }'
 ```
 
-### 7.3 Generasi Gambar
+### 7.3 Chat Completion (Format Anthropic / Claude)
+
+```bash
+curl -s http://127.0.0.1:8080/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: API_KEY_ANDA" \
+  -d '{
+    "model": "grok-3",
+    "max_tokens": 1024,
+    "system": "Anda adalah asisten cerdas.",
+    "messages": [
+      {"role": "user", "content": "Halo dari Grokpi dengan format Anthropic API"}
+    ]
+  }'
+```
+
+### 7.4 Generasi Gambar
 
 ```bash
 curl -s http://127.0.0.1:8080/v1/chat/completions \
@@ -115,7 +131,7 @@ curl -s http://127.0.0.1:8080/v1/chat/completions \
   }'
 ```
 
-### 7.4 Generasi Video
+### 7.5 Generasi Video
 
 ```bash
 curl -s http://127.0.0.1:8080/v1/chat/completions \

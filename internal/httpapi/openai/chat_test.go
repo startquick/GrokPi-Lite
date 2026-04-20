@@ -22,7 +22,7 @@ import (
 )
 
 func TestHandleChat_MissingMessages(t *testing.T) {
-	s := httpapi.NewServer(&httpapi.ServerConfig{ChatProvider: &Handler{}})
+	s := httpapi.NewServer(&httpapi.ServerConfig{ChatProviders: []httpapi.ChatProvider{&Handler{}}})
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions",
 		strings.NewReader(`{"model":"grok-3"}`))
 	req.Header.Set("Content-Type", "application/json")
@@ -39,7 +39,7 @@ func TestHandleChat_MissingMessages(t *testing.T) {
 }
 
 func TestHandleChat_EmptyMessages(t *testing.T) {
-	s := httpapi.NewServer(&httpapi.ServerConfig{ChatProvider: &Handler{}})
+	s := httpapi.NewServer(&httpapi.ServerConfig{ChatProviders: []httpapi.ChatProvider{&Handler{}}})
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions",
 		strings.NewReader(`{"model":"grok-3","messages":[]}`))
 	req.Header.Set("Content-Type", "application/json")
@@ -56,7 +56,7 @@ func TestHandleChat_EmptyMessages(t *testing.T) {
 
 func TestHandleChat_InvalidModel(t *testing.T) {
 	cfg := config.DefaultConfig()
-	s := httpapi.NewServer(&httpapi.ServerConfig{Config: cfg, ChatProvider: &Handler{Cfg: cfg}})
+	s := httpapi.NewServer(&httpapi.ServerConfig{Config: cfg, ChatProviders: []httpapi.ChatProvider{&Handler{Cfg: cfg}}})
 	body := `{"model":"invalid-model","messages":[{"role":"user","content":"hi"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions",
 		strings.NewReader(body))
@@ -74,7 +74,7 @@ func TestHandleChat_InvalidModel(t *testing.T) {
 }
 
 func TestHandleChat_InvalidJSON(t *testing.T) {
-	s := httpapi.NewServer(&httpapi.ServerConfig{ChatProvider: &Handler{}})
+	s := httpapi.NewServer(&httpapi.ServerConfig{ChatProviders: []httpapi.ChatProvider{&Handler{}}})
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions",
 		strings.NewReader(`{invalid json`))
 	req.Header.Set("Content-Type", "application/json")
@@ -292,7 +292,7 @@ func TestHandleChat_ImageModelRoute(t *testing.T) {
 		events: []xai.ImageEvent{{Type: xai.ImageEventFinal, ImageData: "abc123"}},
 	}
 	imageFlow := newTestImageFlow(mock)
-	s := httpapi.NewServer(&httpapi.ServerConfig{ChatProvider: &Handler{ImageFlow: imageFlow}})
+	s := httpapi.NewServer(&httpapi.ServerConfig{ChatProviders: []httpapi.ChatProvider{&Handler{ImageFlow: imageFlow}}})
 
 	body := `{"model":"grok-imagine-1.0","messages":[{"role":"user","content":"draw a cat"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(body))
@@ -313,7 +313,7 @@ func TestHandleChat_ImageModelRoute_BridgesAPIKeyID(t *testing.T) {
 	recorder := &chatUsageRecorder{}
 	imageFlow.SetUsageRecorder(recorder)
 	s := httpapi.NewServer(&httpapi.ServerConfig{
-		ChatProvider: &Handler{ImageFlow: imageFlow},
+		ChatProviders: []httpapi.ChatProvider{&Handler{ImageFlow: imageFlow}},
 		APIKeyStore:  &chatMockAPIKeyStore{},
 	})
 
@@ -338,7 +338,7 @@ func TestHandleChat_VideoModelRoute(t *testing.T) {
 		func(token string) flow.VideoClient { return &chatVideoClientMock{} },
 		&flow.VideoFlowConfig{TimeoutSeconds: 5, PollIntervalSeconds: 1},
 	)
-	s := httpapi.NewServer(&httpapi.ServerConfig{ChatProvider: &Handler{VideoFlow: videoFlow}})
+	s := httpapi.NewServer(&httpapi.ServerConfig{ChatProviders: []httpapi.ChatProvider{&Handler{VideoFlow: videoFlow}}})
 
 	body := `{"model":"grok-imagine-1.0-video","messages":[{"role":"user","content":"make a short clip"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(body))

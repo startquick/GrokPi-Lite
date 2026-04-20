@@ -36,7 +36,7 @@ func notImplementedHandler(w http.ResponseWriter, _ *http.Request) {
 type Server struct {
 	router          chi.Router
 	startTime       time.Time
-	chatProvider    ChatProvider
+	chatProviders   []ChatProvider
 	appKey          string
 	version         string
 	cfg             *config.Config
@@ -56,7 +56,7 @@ type ServerConfig struct {
 	Version         string
 	Config          *config.Config
 	Runtime         *config.Runtime
-	ChatProvider    ChatProvider
+	ChatProviders   []ChatProvider
 	TokenStore      TokenStoreInterface
 	TokenRefresher  TokenRefresher
 	TokenPoolSyncer TokenPoolSyncer
@@ -71,14 +71,14 @@ func NewServer(cfg *ServerConfig) *Server {
 	if cfg == nil {
 		cfg = &ServerConfig{}
 	}
-	chatProvider := cfg.ChatProvider
-	if chatProvider == nil {
-		chatProvider = noopChatProvider{}
+	chatProviders := cfg.ChatProviders
+	if len(chatProviders) == 0 {
+		chatProviders = []ChatProvider{noopChatProvider{}}
 	}
 	s := &Server{
 		router:          chi.NewRouter(),
 		startTime:       time.Now(),
-		chatProvider:    chatProvider,
+		chatProviders:   chatProviders,
 		appKey:          cfg.AppKey,
 		version:         cfg.Version,
 		cfg:             cfg.Config,
@@ -154,8 +154,10 @@ func (s *Server) setupRoutes() {
 	// API routes (with auth)
 	s.router.Route("/v1", func(r chi.Router) {
 		s.applyAPIAuth(r)
-		if s.chatProvider != nil {
-			s.chatProvider.SetupRoutes(r)
+		for _, p := range s.chatProviders {
+			if p != nil {
+				p.SetupRoutes(r)
+			}
 		}
 	})
 
