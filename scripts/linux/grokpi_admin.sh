@@ -1,4 +1,23 @@
 #!/bin/bash
+
+API_BASE="${GROKPI_ADMIN_BASE_URL:-http://127.0.0.1:8080}"
+COOKIE_JAR="$(mktemp)"
+
+cleanup() {
+    rm -f "$COOKIE_JAR"
+}
+trap cleanup EXIT
+
+admin_curl() {
+    curl -s -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
+      -H "Authorization: Bearer $APP_KEY" \
+      "$@"
+}
+
+json_escape() {
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
 echo "============================"
 echo " GrokPi Admin Utility (.sh) "
 echo "============================"
@@ -9,8 +28,19 @@ if [ -z "$APP_KEY" ]; then
     echo ""
 fi
 
-# Bearer Token
-export TOKEN="$APP_KEY"
+LOGIN_PAYLOAD="{\"key\":\"$(json_escape "$APP_KEY")\"}"
+LOGIN_CODE=$(curl -s -o "$COOKIE_JAR.body" -w "%{http_code}" -c "$COOKIE_JAR" \
+  -X POST "$API_BASE/admin/login" \
+  -H "Content-Type: application/json" \
+  -d "$LOGIN_PAYLOAD")
+
+if [ "$LOGIN_CODE" != "200" ]; then
+    echo -e "\e[31mLogin failed.\e[0m"
+    cat "$COOKIE_JAR.body"
+    rm -f "$COOKIE_JAR.body"
+    exit 1
+fi
+rm -f "$COOKIE_JAR.body"
 echo -e "\e[32mLogin successful!\e[0m"
 
 while true; do
@@ -33,8 +63,7 @@ while true; do
         JSON_TOKENS=$(echo "$upTokens" | tr ',' '\n' | sed 's/^[ \t]*//;s/[ \t]*$//' | sed 's/.*/"&"/' | paste -sd, -)
         if [ ! -z "$JSON_TOKENS" ]; then
             JSON_PAYLOAD="{\"operation\": \"import\", \"tokens\": [$JSON_TOKENS]}"
-            K_RES=$(curl -s -X POST http://127.0.0.1:8080/admin/tokens/batch \
-              -H "Authorization: Bearer $TOKEN" \
+            K_RES=$(admin_curl -X POST "$API_BASE/admin/tokens/batch" \
               -H "Content-Type: application/json" \
               -d "$JSON_PAYLOAD")
             FAILED=$(echo "$K_RES" | grep -o '"failed":[0-9]*' | cut -d: -f2 | head -n1)
@@ -46,7 +75,7 @@ while true; do
             fi
         fi
     elif [ "$choice" = "2" ]; then
-        RES=$(curl -s -X GET "http://127.0.0.1:8080/admin/tokens?page_size=100" -H "Authorization: Bearer $TOKEN")
+        RES=$(admin_curl -X GET "$API_BASE/admin/tokens?page_size=100")
         if command -v python3 &>/dev/null; then
             echo -e "\e[36m\n--- Upstream Token List ---\e[0m"
             echo "$RES" | python3 -c '
@@ -75,7 +104,7 @@ except Exception as e:
     elif [ "$choice" = "3" ]; then
         read -p "Enter the Token ID to delete (e.g. 1): " delId
         if [ ! -z "$delId" ]; then
-            DEL_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "http://127.0.0.1:8080/admin/tokens/$delId" -H "Authorization: Bearer $TOKEN")
+            DEL_CODE=$(admin_curl -o /dev/null -w "%{http_code}" -X DELETE "$API_BASE/admin/tokens/$delId")
             if [ "$DEL_CODE" = "204" ] || [ "$DEL_CODE" = "200" ]; then
                 echo -e "\e[32mSuccessfully deleted Token ID: $delId\e[0m"
             else
@@ -85,14 +114,13 @@ except Exception as e:
     elif [ "$choice" = "4" ]; then
         read -p "Enter an alias/name for the new API Key: " keyName
         if [ -z "$keyName" ]; then keyName="UnnamedKey"; fi
-        K_RES=$(curl -s -X POST http://127.0.0.1:8080/admin/apikeys \
-          -H "Authorization: Bearer $TOKEN" \
+        K_RES=$(admin_curl -X POST "$API_BASE/admin/apikeys" \
           -H "Content-Type: application/json" \
           -d "{\"name\": \"$keyName\", \"limit_type\": \"unlimited\"}")
         API_KEY=$(echo "$K_RES" | grep -o '"key":"[^"]*' | grep -o '[^"]*$')
         echo -e "\e[32mSuccessfully created API Key: $API_KEY\e[0m"
     elif [ "$choice" = "5" ]; then
-        RES=$(curl -s -X GET "http://127.0.0.1:8080/admin/apikeys?page_size=100" -H "Authorization: Bearer $TOKEN")
+        RES=$(admin_curl -X GET "$API_BASE/admin/apikeys?page_size=100")
         if command -v python3 &>/dev/null; then
             echo -e "\e[36m\n--- Client API Key List ---\e[0m"
             echo "$RES" | python3 -c '
@@ -111,7 +139,7 @@ except Exception:
     elif [ "$choice" = "6" ]; then
         read -p "Enter the API Key ID to delete: " delId
         if [ ! -z "$delId" ]; then
-            DEL_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "http://127.0.0.1:8080/admin/apikeys/$delId" -H "Authorization: Bearer $TOKEN")
+            DEL_CODE=$(admin_curl -o /dev/null -w "%{http_code}" -X DELETE "$API_BASE/admin/apikeys/$delId")
             if [ "$DEL_CODE" = "204" ] || [ "$DEL_CODE" = "200" ]; then
                 echo -e "\e[32mSuccessfully deleted API Key ID: $delId\e[0m"
             else

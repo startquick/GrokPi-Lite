@@ -162,12 +162,20 @@ func AppKeyAuth(appKey string) func(http.Handler) http.Handler {
 
 			// 2. Fallback to Bearer header (script/API compatibility)
 			auth := r.Header.Get("Authorization")
-			if auth != "" && strings.HasPrefix(auth, "Bearer ") {
-				token := strings.TrimPrefix(auth, "Bearer ")
-				if subtle.ConstantTimeCompare([]byte(token), []byte(appKey)) == 1 {
-					next.ServeHTTP(w, r)
+			if auth != "" {
+				if strings.HasPrefix(auth, "Bearer ") {
+					token := strings.TrimPrefix(auth, "Bearer ")
+					if subtle.ConstantTimeCompare([]byte(token), []byte(appKey)) == 1 {
+						next.ServeHTTP(w, r)
+						return
+					}
+					WriteError(w, 401, "authentication_error", "invalid_app_key",
+						"Invalid app key")
 					return
 				}
+				WriteError(w, 401, "authentication_error", "missing_app_key",
+					"Missing app key")
+				return
 			}
 
 			// 3. Neither cookie nor valid Bearer

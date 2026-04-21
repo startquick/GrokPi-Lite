@@ -61,6 +61,14 @@ func TestAppKeyAuth_InvalidKey(t *testing.T) {
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("expected 401 for invalid key, got %d", rec.Code)
 	}
+
+	var resp APIError
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode error response: %v", err)
+	}
+	if resp.Error.Code != "invalid_app_key" {
+		t.Fatalf("expected invalid_app_key, got %q", resp.Error.Code)
+	}
 }
 
 func TestAppKeyAuth_ValidKey(t *testing.T) {

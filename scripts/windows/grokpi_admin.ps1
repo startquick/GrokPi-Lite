@@ -2,6 +2,8 @@ param(
     [string]$AppKey = ""
 )
 
+$ApiBase = if ($env:GROKPI_ADMIN_BASE_URL) { $env:GROKPI_ADMIN_BASE_URL } else { "http://127.0.0.1:8080" }
+
 Write-Host "============================"
 Write-Host " GrokPi Admin Utility (.ps1)"
 Write-Host "============================"
@@ -11,8 +13,18 @@ if ($AppKey -eq "") {
     $AppKey = [System.Net.NetworkCredential]::new("", $secureKey).Password
 }
 
-$token = $AppKey
-Write-Host "Login successful!" -ForegroundColor Green
+try {
+    $loginBody = @{ key = $AppKey } | ConvertTo-Json -Compress
+    $null = Invoke-RestMethod -Uri "$ApiBase/admin/login" -Method Post -ContentType "application/json" -Body $loginBody -SessionVariable adminSession
+    Write-Host "Login successful!" -ForegroundColor Green
+} catch {
+    $resp = $_.ErrorDetails.Message
+    if ([string]::IsNullOrWhiteSpace($resp)) {
+        $resp = $_.Exception.Message
+    }
+    Write-Host "Login failed: $resp" -ForegroundColor Red
+    exit 1
+}
 
 while ($true) {
     Write-Host "`n--- Upstream Token Management ---"
@@ -32,7 +44,7 @@ while ($true) {
         if ($tokenArray.Length -gt 0) {
             $addBody = @{ operation = "import"; tokens = $tokenArray } | ConvertTo-Json -Depth 5
             try {
-                $batchRes = Invoke-RestMethod -Uri "http://127.0.0.1:8080/admin/tokens/batch" -Method Post -Headers @{ "Authorization" = "Bearer $token" } -ContentType "application/json" -Body $addBody
+                $batchRes = Invoke-RestMethod -Uri "$ApiBase/admin/tokens/batch" -Method Post -WebSession $adminSession -Headers @{ "Authorization" = "Bearer $AppKey" } -ContentType "application/json" -Body $addBody
                 if ($batchRes.failed -gt 0) {
                     Write-Host "Failed to add some or all tokens. Details:" -ForegroundColor Red
                     $batchRes | ConvertTo-Json -Depth 5 | Write-Host
@@ -46,7 +58,7 @@ while ($true) {
     }
     elseif ($choice -eq "2") {
         try {
-            $listRes = Invoke-RestMethod -Uri "http://127.0.0.1:8080/admin/tokens?page_size=100" -Method Get -Headers @{ "Authorization" = "Bearer $token" }
+            $listRes = Invoke-RestMethod -Uri "$ApiBase/admin/tokens?page_size=100" -Method Get -WebSession $adminSession -Headers @{ "Authorization" = "Bearer $AppKey" }
             if ($listRes.data.Count -gt 0) {
                 Write-Host "`n--- Upstream Token List ---" -ForegroundColor Cyan
                 $listRes.data | Select-Object id, status, pool, priority, chat_quota, token | Format-Table
@@ -61,7 +73,7 @@ while ($true) {
         $delId = Read-Host "Enter the Token ID to delete (e.g. 1)"
         if ($delId -ne "") {
             try {
-                $null = Invoke-RestMethod -Uri "http://127.0.0.1:8080/admin/tokens/$delId" -Method Delete -Headers @{ "Authorization" = "Bearer $token" }
+                $null = Invoke-RestMethod -Uri "$ApiBase/admin/tokens/$delId" -Method Delete -WebSession $adminSession -Headers @{ "Authorization" = "Bearer $AppKey" }
                 Write-Host "Successfully deleted Token ID: $delId" -ForegroundColor Green
             } catch {
                 Write-Host "Failed to delete Token ID: $delId." -ForegroundColor Red
@@ -73,7 +85,7 @@ while ($true) {
         if ($keyName -eq "") { $keyName = "UnnamedKey" }
         $keyBody = @{ name = $keyName; limit_type = "unlimited" } | ConvertTo-Json -Depth 5
         try {
-            $kRes = Invoke-RestMethod -Uri "http://127.0.0.1:8080/admin/apikeys" -Method Post -Headers @{ "Authorization" = "Bearer $token" } -ContentType "application/json" -Body $keyBody
+            $kRes = Invoke-RestMethod -Uri "$ApiBase/admin/apikeys" -Method Post -WebSession $adminSession -Headers @{ "Authorization" = "Bearer $AppKey" } -ContentType "application/json" -Body $keyBody
             Write-Host "Successfully created API Key: $($kRes.key)" -ForegroundColor Green
         } catch {
             Write-Host "Failed to create API key." -ForegroundColor Red
@@ -81,7 +93,7 @@ while ($true) {
     }
     elseif ($choice -eq "5") {
         try {
-            $listRes = Invoke-RestMethod -Uri "http://127.0.0.1:8080/admin/apikeys?page_size=100" -Method Get -Headers @{ "Authorization" = "Bearer $token" }
+            $listRes = Invoke-RestMethod -Uri "$ApiBase/admin/apikeys?page_size=100" -Method Get -WebSession $adminSession -Headers @{ "Authorization" = "Bearer $AppKey" }
             if ($listRes.data.Count -gt 0) {
                 Write-Host "`n--- Client API Key List ---" -ForegroundColor Cyan
                 $listRes.data | Select-Object id, name, status, key | Format-Table
@@ -96,7 +108,7 @@ while ($true) {
         $delId = Read-Host "Enter the API Key ID to delete"
         if ($delId -ne "") {
             try {
-                $null = Invoke-RestMethod -Uri "http://127.0.0.1:8080/admin/apikeys/$delId" -Method Delete -Headers @{ "Authorization" = "Bearer $token" }
+                $null = Invoke-RestMethod -Uri "$ApiBase/admin/apikeys/$delId" -Method Delete -WebSession $adminSession -Headers @{ "Authorization" = "Bearer $AppKey" }
                 Write-Host "Successfully deleted API Key ID: $delId" -ForegroundColor Green
             } catch {
                 Write-Host "Failed to delete API Key ID: $delId." -ForegroundColor Red
