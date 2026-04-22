@@ -236,7 +236,34 @@ curl -s https://api.domainanda.com/v1/messages \
   }'
 ```
 
-## 11. Backup Awal
+## 11. Post-Deploy Smoke Test
+
+Setelah container, reverse proxy, dan admin key siap, jalankan smoke test ringkas ini dari VPS. Ganti `APP_KEY` dan `API_KEY_ANDA` dengan nilai yang benar.
+
+```bash
+APP_KEY='app-key-admin-anda'
+API_KEY='sk-anda'
+BASE_URL='http://127.0.0.1:8080'
+
+curl -fsS "$BASE_URL/health"
+curl -fsS "$BASE_URL/admin/verify" -H "Authorization: Bearer $APP_KEY"
+curl -fsS "$BASE_URL/v1/models" -H "Authorization: Bearer $API_KEY"
+curl -fsS "$BASE_URL/admin/tokens?page_size=10" -H "Authorization: Bearer $APP_KEY"
+```
+
+Alternatif kalau `make` tersedia di VPS:
+
+```bash
+make smoke BASE_URL=http://127.0.0.1:8080 APP_KEY="$APP_KEY" API_KEY="$API_KEY"
+```
+
+Ekspektasi:
+- `/health` mengembalikan status `ok`
+- `/admin/verify` mengembalikan `{"status":"ok"}`
+- `/v1/models` mengembalikan daftar model
+- `/admin/tokens` mengembalikan daftar token admin tanpa error auth
+
+## 12. Backup Awal
 
 Setelah sistem sehat, buat backup awal.
 ```bash
@@ -244,7 +271,7 @@ cd ~/GrokPi-Lite
 tar czf grokpi-backup-$(date +%F).tar.gz config.toml data/
 ```
 
-## 12. Checklist Final Sebelum Dianggap Live
+## 13. Checklist Final Sebelum Dianggap Live
 
 - `app_key` bukan default
 - `docker compose ps` menunjukkan service sehat
@@ -257,7 +284,7 @@ tar czf grokpi-backup-$(date +%F).tar.gz config.toml data/
 - `/v1/messages` berhasil
 - backup awal sudah dibuat
 
-## 13. Update Aman Setelah Live
+## 14. Update Aman Setelah Live
 
 Gunakan alur update yang tidak destruktif:
 ```bash

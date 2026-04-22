@@ -49,6 +49,10 @@ func TestHandleAdminLogin_WrongKey(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	assert.Empty(t, rec.Result().Cookies())
+
+	var resp APIError
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
+	assert.Equal(t, "invalid_app_key", resp.Error.Code)
 }
 
 func TestHandleAdminLogin_EmptyKey(t *testing.T) {
@@ -92,6 +96,35 @@ func TestHandleAdminLogin_SecureFlagOnHTTPS(t *testing.T) {
 	cookies := rec.Result().Cookies()
 	require.Len(t, cookies, 1)
 	assert.True(t, cookies[0].Secure)
+}
+
+func TestHandleAdminLogin_SessionCookieAccessesProtectedRoute(t *testing.T) {
+	loginHandler := handleAdminLogin("my-secret-key")
+
+	body := `{"key":"my-secret-key"}`
+	loginReq := httptest.NewRequest(http.MethodPost, "/admin/login", strings.NewReader(body))
+	loginReq.Header.Set("Content-Type", "application/json")
+	loginRec := httptest.NewRecorder()
+	loginHandler.ServeHTTP(loginRec, loginReq)
+
+	require.Equal(t, http.StatusOK, loginRec.Code)
+	cookies := loginRec.Result().Cookies()
+	require.Len(t, cookies, 1)
+
+	protectedCalled := false
+	protected := AppKeyAuth("my-secret-key")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		protectedCalled = true
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/verify", nil)
+	req.AddCookie(cookies[0])
+	rec := httptest.NewRecorder()
+	protected.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.True(t, protectedCalled)
 }
 
 func TestHandleAdminLogout(t *testing.T) {

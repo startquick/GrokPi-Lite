@@ -146,6 +146,24 @@ func TestAppKeyAuth_InvalidCookieFallsBackToBearer(t *testing.T) {
 	assert.True(t, called)
 }
 
+func TestAppKeyAuth_ValidCookieTakesPriorityOverWrongBearer(t *testing.T) {
+	called := false
+	handler := AppKeyAuth("test-app-key")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/config", nil)
+	req.AddCookie(&http.Cookie{Name: "gf_session", Value: signAdminSession("test-app-key", time.Now().UTC())})
+	req.Header.Set("Authorization", "Bearer wrong-key")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.True(t, called)
+}
+
 func TestAppKeyAuth_NoCookieNoBearerRejects(t *testing.T) {
 	handler := AppKeyAuth("test-app-key")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

@@ -168,6 +168,9 @@ func (s *Server) setupRoutes() {
 			r.Use(AdminRateLimit(s.cfg))
 		}
 
+		r.Get("/", handleAdminAccessRedirect())
+		r.Get("/access", handleAdminAccessPage())
+
 		// Public (no AppKeyAuth) — login endpoint
 		if s.runtime != nil {
 			r.Post("/login", handleAdminLoginRuntime(s.runtime))
@@ -192,7 +195,7 @@ func (s *Server) setupRoutes() {
 			r.Post("/logout", handleAdminLogout())
 
 			// System status endpoint
-			r.Get("/system/status", handleSystemStatus(s.tokenStore, s.apiKeyStore, s.startTime, s.version))
+			r.Get("/system/status", handleSystemStatus(s.tokenStore, s.apiKeyStore, s.startTime, s.version, s.systemConfigInspector()))
 
 			// Config endpoints
 			if s.runtime != nil {
@@ -209,6 +212,17 @@ func (s *Server) setupRoutes() {
 				r.Get("/tokens/ids", handleListTokenIDs(s.tokenStore))
 				r.Get("/tokens/{id}", handleGetToken(s.tokenStore))
 				r.Put("/tokens/{id}", handleUpdateToken(s.tokenStore, s.tokenPoolSyncer))
+				if s.runtime != nil {
+					r.Post("/tokens/{id}/replace", handleReplaceTokenFromProvider(s.tokenStore, s.tokenPoolSyncer, func() *config.TokenConfig {
+						current := s.runtime.Get()
+						if current == nil {
+							return nil
+						}
+						return &current.Token
+					}))
+				} else {
+					r.Post("/tokens/{id}/replace", handleReplaceToken(s.tokenStore, s.tokenPoolSyncer, s.cfg))
+				}
 				r.Delete("/tokens/{id}", handleDeleteToken(s.tokenStore, s.tokenPoolSyncer))
 				if s.runtime != nil {
 					r.Post("/tokens/batch", handleBatchTokensFromProvider(s.tokenStore, s.tokenPoolSyncer, func() *config.TokenConfig {
@@ -291,6 +305,13 @@ func (s *Server) applyAPIAuth(r chi.Router) {
 // Router returns the chi router for http.Server.
 func (s *Server) Router() http.Handler {
 	return s.router
+}
+
+func (s *Server) systemConfigInspector() systemConfigInspector {
+	if s.runtime != nil {
+		return buildSystemConfigInspector(s.runtime.Get, s.configStore)
+	}
+	return buildSystemConfigInspector(func() *config.Config { return s.cfg }, s.configStore)
 }
 
 // HealthResponse is the health check response.

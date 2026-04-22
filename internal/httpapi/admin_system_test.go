@@ -8,8 +8,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crmmc/grokpi/internal/config"
 	"github.com/crmmc/grokpi/internal/store"
 )
+
+type mockSystemConfigStore struct {
+	values map[string]string
+}
+
+func (m *mockSystemConfigStore) Get(key string) (string, error) {
+	return m.values[key], nil
+}
+
+func (m *mockSystemConfigStore) GetAll() (map[string]string, error) {
+	if m.values == nil {
+		return map[string]string{}, nil
+	}
+	return m.values, nil
+}
 
 func TestHandleSystemStatus_APIKeys(t *testing.T) {
 	ctx := context.Background()
@@ -27,7 +43,7 @@ func TestHandleSystemStatus_APIKeys(t *testing.T) {
 		aks.Create(ctx, &store.APIKey{Name: "i", Status: "inactive"})
 	}
 
-	handler := handleSystemStatus(ts, aks, time.Now(), "1.0.0")
+	handler := handleSystemStatus(ts, aks, time.Now(), "1.0.0", nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/system/status", nil)
 	w := httptest.NewRecorder()
@@ -55,12 +71,15 @@ func TestHandleSystemStatus_APIKeys(t *testing.T) {
 	if resp.Tokens.Active != 2 {
 		t.Errorf("expected tokens.active=2, got %d", resp.Tokens.Active)
 	}
+	if resp.Config.AppKeySource != "default" {
+		t.Errorf("expected default app_key source, got %q", resp.Config.AppKeySource)
+	}
 }
 
 func TestHandleSystemStatus_NilAPIKeyStore(t *testing.T) {
 	ts := newMockTokenStore()
 
-	handler := handleSystemStatus(ts, nil, time.Now(), "1.0.0")
+	handler := handleSystemStatus(ts, nil, time.Now(), "1.0.0", nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/system/status", nil)
 	w := httptest.NewRecorder()
@@ -82,5 +101,43 @@ func TestHandleSystemStatus_NilAPIKeyStore(t *testing.T) {
 	}
 	if resp.APIKeys.Active != 0 {
 		t.Errorf("expected api_keys.active=0, got %d", resp.APIKeys.Active)
+	}
+}
+
+func TestBuildSystemConfigInspector_ConfigSource(t *testing.T) {
+	inspector := buildSystemConfigInspector(func() *config.Config {
+		cfg := config.DefaultConfig()
+		cfg.App.AppKey = "file-key"
+		return cfg
+	}, nil)
+
+	status := inspector()
+	if status.AppKeySource != "config" {
+		t.Fatalf("expected config source, got %q", status.AppKeySource)
+	}
+	if status.HasDBOverrides {
+		t.Fatalf("expected no DB overrides")
+	}
+}
+
+func TestBuildSystemConfigInspector_DBSourceAndOverrideCount(t *testing.T) {
+	inspector := buildSystemConfigInspector(func() *config.Config {
+		cfg := config.DefaultConfig()
+		cfg.App.AppKey = "runtime-key"
+		return cfg
+	}, &mockSystemConfigStore{values: map[string]string{
+		"app.app_key":      "db-key",
+		"token.fail_count": "5",
+	}})
+
+	status := inspector()
+	if status.AppKeySource != "db" {
+		t.Fatalf("expected db source, got %q", status.AppKeySource)
+	}
+	if !status.HasDBOverrides {
+		t.Fatalf("expected DB overrides true")
+	}
+	if status.DBOverrideCount != 2 {
+		t.Fatalf("expected DB override count 2, got %d", status.DBOverrideCount)
 	}
 }

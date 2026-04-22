@@ -7,7 +7,7 @@ Panduan ini berfokus pada self-hosting di server atau VPS milik sendiri.
 
 - Endpoint Dual-Format: Mendukung protokol **OpenAI-compatible** (`/v1/chat/completions`) dan **Anthropic-compatible** (`/v1/messages`).
 - Endpoint Admin API untuk token pool, API key, riwayat penggunaan, pengaturan, dan cache
-- Binary Go tunggal API-only (Headless) tanpa beban resource Frontend/UI
+- Binary Go tunggal API-first dengan admin access console embedded yang ringan
 - Mekanisme pintar pemulihan Cloudflare (*CF Challenge Bypass*) dengan *circuit breaker* otomatis
 - Peringatan proaktif status upstream xAI via notifikasi Telegram Webhook
 - SQLite sebagai default, PostgreSQL sebagai opsi
@@ -25,9 +25,20 @@ Checklist praktis Ubuntu VPS juga tersedia di:
 
 
 
-## 5. Konfigurasi Awal via Admin API (Headless)
+## 5. Konfigurasi Awal via Admin Access Console
 
-Karena versi ini tidak memiliki UI (Web Panel), semua manajemen dilakukan via API Console.
+Untuk perubahan cepat tanpa SSH atau masuk ke server, buka:
+
+`http://127.0.0.1:8080/admin/access`
+
+Masuk menggunakan `app_key`, lalu kelola:
+
+1. Token upstream Grok
+2. Client API key
+
+Console ini memakai endpoint admin yang sama dengan script, jadi tetap cocok untuk server ringan tanpa frontend terpisah.
+
+## 6. Alternatif via Script Admin
 
 Kami telah menyediakan script interaktif untuk mempermudah konfigurasi awal tanpa perlu mengingat perintah *curl*.
 
@@ -50,7 +61,7 @@ Menu interaktif akan muncul. Ikuti instruksi di layar untuk:
 
 *API Key inilah yang nanti akan dipakai untuk request ke endpoint `/v1/chat/completions` atau didaftarkan pada LLM Apps seperti AnythingLLM, Dify, dll.*
 
-## 6. Contoh Konfigurasi Minimal
+## 7. Contoh Konfigurasi Minimal
 
 ```toml
 [app]
@@ -79,7 +90,7 @@ Catatan penting:
 - Jangan bagikan file `config.toml` ke publik.
 - Untuk deployment publik, gunakan reverse proxy dengan TLS.
 
-## 7. Contoh Penggunaan API
+## 8. Contoh Penggunaan API
 
 ### 7.1 Daftar Model
 

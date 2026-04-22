@@ -347,7 +347,7 @@ func maskKey(key string) string {
 func toAPIKeyResponse(ak *store.APIKey) APIKeyResponse {
 	return APIKeyResponse{
 		ID:             ak.ID,
-		Key:            ak.Key,
+		Key:            maskKey(ak.Key),
 		Name:           ak.Name,
 		Status:         ak.Status,
 		ModelWhitelist: ak.ModelWhitelist,

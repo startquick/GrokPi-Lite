@@ -73,6 +73,40 @@ func TestServer_AdminRoutesWithValidKey(t *testing.T) {
 	}
 }
 
+func TestServer_AdminAccessPageWithoutAuth(t *testing.T) {
+	srv := NewServer(&ServerConfig{
+		AppKey: "test-app-key",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/access", nil)
+	rr := httptest.NewRecorder()
+	srv.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("got status %d, want %d", rr.Code, http.StatusOK)
+	}
+	if !strings.Contains(rr.Body.String(), "GrokPi Access") {
+		t.Fatalf("expected admin access page content, got %q", rr.Body.String())
+	}
+}
+
+func TestServer_AdminRootRedirectsToAccess(t *testing.T) {
+	srv := NewServer(&ServerConfig{
+		AppKey: "test-app-key",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	rr := httptest.NewRecorder()
+	srv.Router().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusTemporaryRedirect {
+		t.Fatalf("got status %d, want %d", rr.Code, http.StatusTemporaryRedirect)
+	}
+	if got := rr.Header().Get("Location"); got != "/admin/access" {
+		t.Fatalf("got location %q, want %q", got, "/admin/access")
+	}
+}
+
 func TestServer_FilesRouteWithoutAuth(t *testing.T) {
 	cacheSvc := cache.NewService(t.TempDir())
 	name, err := cacheSvc.SaveFile("video", []byte("mp4-data"), ".mp4")

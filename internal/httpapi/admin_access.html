@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GrokPi Access Console</title>
+  <style>
+    :root {
+      --bg: #f5f1e8;
+      --panel: #fffaf1;
+      --ink: #1f1a15;
+      --muted: #6d6258;
+      --line: #d8ccb9;
+      --accent: #005f73;
+      --accent-2: #ca6702;
+      --danger: #a61b1b;
+      --good: #1f7a4d;
+      --warn: #9a5d00;
+      --shadow: 0 18px 40px rgba(60, 40, 20, 0.12);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(0, 95, 115, 0.10), transparent 30%),
+        radial-gradient(circle at top right, rgba(202, 103, 2, 0.14), transparent 25%),
+        linear-gradient(180deg, #f7f3eb 0%, #efe7d8 100%);
+      font-family: Georgia, "Times New Roman", serif;
+    }
+    .shell {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 28px 18px 48px;
+    }
+    .hero {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding: 26px;
+      border: 1px solid rgba(31, 26, 21, 0.08);
+      border-radius: calc(var(--radius) + 6px);
+      background: linear-gradient(135deg, rgba(255,250,241,0.96), rgba(247,239,226,0.96));
+      box-shadow: var(--shadow);
+    }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      line-height: 0.95;
+    }
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 700px;
+    }
+    .stack, .stats, .panel, .list-panel, .form-grid, .actions, .token-tools, .key-tools {
+      display: grid;
+      gap: 14px;
+    }
+    .stats {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      margin-bottom: 20px;
+    }
+    .stat, .panel, .list-panel {
+      padding: 18px;
+      border-radius: var(--radius);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+    .stat strong {
+      display: block;
+      font-size: 1.8rem;
+      margin-top: 8px;
+    }
+    .eyebrow {
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .panel h2, .list-panel h2 {
+      margin: 0 0 8px;
+      font-size: 1.25rem;
+    }
+    .panel p, .list-panel p, .helper {
+      margin: 0;
+      color: var(--muted);
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 0.95rem;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+    }
+    textarea {
+      min-height: 118px;
+      resize: vertical;
+    }
+    button {
+      padding: 10px 14px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: transparent;
+      color: var(--accent);
+      border-color: rgba(0, 95, 115, 0.25);
+    }
+    button.warn {
+      background: var(--accent-2);
+    }
+    button.danger {
+      background: var(--danger);
+    }
+    button.ghost {
+      padding: 7px 10px;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--accent);
+      border-color: var(--line);
+    }
+    button:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+    .hidden {
+      display: none !important;
+    }
+    .form-grid {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      align-items: end;
+    }
+    .actions {
+      grid-auto-flow: column;
+      justify-content: start;
+      align-items: center;
+    }
+    .flash {
+      margin-bottom: 18px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      background: rgba(0, 95, 115, 0.08);
+      color: var(--ink);
+    }
+    .flash.success {
+      border-color: rgba(31, 122, 77, 0.20);
+      background: rgba(31, 122, 77, 0.10);
+    }
+    .flash.error {
+      border-color: rgba(166, 27, 27, 0.20);
+      background: rgba(166, 27, 27, 0.10);
+    }
+    .flash.warn {
+      border-color: rgba(154, 93, 0, 0.20);
+      background: rgba(154, 93, 0, 0.10);
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      background: rgba(0, 95, 115, 0.08);
+      color: var(--accent);
+      border: 1px solid transparent;
+    }
+    .tab.active {
+      background: var(--accent);
+      color: #fff;
+    }
+    .table-wrap {
+      overflow: auto;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 860px;
+      background: #fff;
+    }
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid rgba(216, 204, 185, 0.65);
+      text-align: left;
+      vertical-align: top;
+      font-size: 0.94rem;
+    }
+    th {
+      background: #f6eee2;
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.9em;
+      word-break: break-all;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      border: 1px solid rgba(31, 26, 21, 0.1);
+      background: rgba(31, 26, 21, 0.06);
+    }
+    .badge.active { background: rgba(31, 122, 77, 0.12); color: var(--good); }
+    .badge.cooling { background: rgba(154, 93, 0, 0.12); color: var(--warn); }
+    .badge.disabled, .badge.expired, .badge.inactive { background: rgba(166, 27, 27, 0.12); color: var(--danger); }
+    .badge.ssoSuper { background: rgba(0, 95, 115, 0.12); color: var(--accent); }
+    .badge.ssoBasic { background: rgba(202, 103, 2, 0.14); color: var(--accent-2); }
+    .row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .muted {
+      color: var(--muted);
+    }
+    @media (max-width: 760px) {
+      .hero {
+        display: grid;
+      }
+      .actions {
+        grid-auto-flow: row;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Embedded admin console</div>
+        <h1>GrokPi Access</h1>
+        <p>Manage upstream SSO tokens and client API keys from a browser, without SSH or direct server access.</p>
+      </div>
+      <div class="muted" id="heroStatus">Checking admin session...</div>
+    </section>
+
+    <div id="flash" class="flash hidden" role="status" aria-live="polite"></div>
+
+    <section id="loginSection" class="panel">
+      <h2>Admin Login</h2>
+      <p>Sign in with the current <code>app_key</code> to manage tokens and API keys.</p>
+      <form id="loginForm" class="stack">
+        <label>
+          App key
+          <input id="appKeyInput" type="password" name="key" placeholder="Enter app_key" autocomplete="current-password" required>
+        </label>
+        <div class="actions">
+          <button id="loginButton" type="submit">Sign in</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="appSection" class="hidden">
+      <div class="stats">
+        <article class="stat">
+          <div class="eyebrow">Token pool</div>
+          <strong id="statTokens">-</strong>
+          <div class="muted" id="statTokensDetail">Loading...</div>
+        </article>
+        <article class="stat">
+          <div class="eyebrow">API keys</div>
+          <strong id="statKeys">-</strong>
+          <div class="muted" id="statKeysDetail">Loading...</div>
+        </article>
+        <article class="stat">
+          <div class="eyebrow">Runtime</div>
+          <strong id="statVersion">-</strong>
+          <div class="muted" id="statConfig">Config source unknown</div>
+        </article>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="tokensTab" type="button">Tokens</button>
+        <button class="tab" data-tab="keysTab" type="button">API Keys</button>
+        <button id="refreshAllButton" class="secondary" type="button">Refresh</button>
+        <button id="logoutButton" class="secondary" type="button">Logout</button>
+      </div>
+
+      <div id="tokensTab" class="stack">
+        <section class="panel">
+          <h2>Import Tokens</h2>
+          <p>Paste one or more SSO tokens. Auto-detect will classify basic vs super when pool and quota are left empty.</p>
+          <form id="tokenImportForm" class="stack">
+            <label>
+              Tokens
+              <textarea id="tokenImportInput" placeholder="Paste tokens here, separated by comma or newline"></textarea>
+            </label>
+            <div class="form-grid">
+              <label>
+                Default pool
+                <select id="tokenImportPool">
+                  <option value="">Auto detect</option>
+                  <option value="ssoBasic">ssoBasic</option>
+                  <option value="ssoSuper">ssoSuper</option>
+                </select>
+              </label>
+              <label>
+                Chat quota
+                <input id="tokenImportQuota" type="number" min="0" placeholder="Auto">
+              </label>
+              <label>
+                Remark
+                <input id="tokenImportRemark" type="text" maxlength="500" placeholder="Optional note">
+              </label>
+            </div>
+            <div class="actions">
+              <button id="tokenImportButton" type="submit">Import tokens</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="list-panel">
+          <h2>Current Tokens</h2>
+          <p>Replace, refresh, enable, disable, or delete tokens from here.</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Token</th>
+                  <th>Pool</th>
+                  <th>Status</th>
+                  <th>Quota</th>
+                  <th>Priority</th>
+                  <th>Last used</th>
+                  <th>Remark</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tokensTableBody">
+                <tr><td colspan="9" class="muted">Loading tokens...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div id="keysTab" class="stack hidden">
+        <section class="panel">
+          <h2>Create API Key</h2>
+          <p>Create a client key in <code>sk-...</code> format for OpenAI-compatible and Anthropic-compatible clients.</p>
+          <form id="keyCreateForm" class="form-grid">
+            <label>
+              Name
+              <input id="keyNameInput" type="text" placeholder="Example: Production Dify" required>
+            </label>
+            <label>
+              Rate limit / min
+              <input id="keyRateInput" type="number" min="0" value="60">
+            </label>
+            <label>
+              Daily limit
+              <input id="keyDailyInput" type="number" min="0" value="1000">
+            </label>
+            <div class="actions">
+              <button id="keyCreateButton" type="submit">Create key</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="list-panel">
+          <h2>Current API Keys</h2>
+          <p>Keys are masked in the table. Full values are shown only after create or regenerate.</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Key</th>
+                  <th>Status</th>
+                  <th>Limits</th>
+                  <th>Usage</th>
+                  <th>Last used</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="keysTableBody">
+                <tr><td colspan="8" class="muted">Loading API keys...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const state = { tokens: [], keys: [] };
+
+    const flashEl = document.getElementById("flash");
+    const heroStatusEl = document.getElementById("heroStatus");
+    const loginSection = document.getElementById("loginSection");
+    const appSection = document.getElementById("appSection");
+    const tokensTableBody = document.getElementById("tokensTableBody");
+    const keysTableBody = document.getElementById("keysTableBody");
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;");
+    }
+
+    function formatTime(value) {
+      if (!value) return "-";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "-";
+      return date.toLocaleString();
+    }
+
+    function showFlash(message, kind = "success", rawValue = "") {
+      flashEl.className = "flash " + kind;
+      const safeMessage = escapeHtml(message);
+      const safeRaw = escapeHtml(rawValue);
+      const copyButton = rawValue
+        ? '<div class="actions"><button class="secondary" type="button" id="flashCopyButton">Copy value</button></div>'
+        : "";
+      flashEl.innerHTML = safeRaw
+        ? "<strong>" + safeMessage + "</strong><div><code>" + safeRaw + "</code></div>" + copyButton
+        : "<strong>" + safeMessage + "</strong>";
+      flashEl.classList.remove("hidden");
+      const copyBtn = document.getElementById("flashCopyButton");
+      if (copyBtn) {
+        copyBtn.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(rawValue);
+            copyBtn.textContent = "Copied";
+          } catch (_err) {
+            copyBtn.textContent = "Copy failed";
+          }
+        });
+      }
+    }
+
+    function clearFlash() {
+      flashEl.classList.add("hidden");
+      flashEl.textContent = "";
+    }
+
+    async function request(path, options = {}) {
+      const response = await fetch(path, {
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          ...(options.headers || {})
+        },
+        ...options
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+      const payload = contentType.includes("application/json")
+        ? await response.json().catch(() => null)
+        : await response.text();
+
+      if (!response.ok) {
+        const message = payload && payload.error && payload.error.message
+          ? payload.error.message
+          : payload && payload.message
+            ? payload.message
+            : typeof payload === "string" && payload
+              ? payload
+              : "Request failed";
+        throw new Error(message);
+      }
+      return payload;
+    }
+
+    function badgeClass(value) {
+      return "badge " + String(value || "").replace(/[^a-zA-Z0-9_-]/g, "");
+    }
+
+    function renderTokens() {
+      if (!state.tokens.length) {
+        tokensTableBody.innerHTML = '<tr><td colspan="9" class="muted">No tokens found.</td></tr>';
+        return;
+      }
+      tokensTableBody.innerHTML = state.tokens.map((token) => {
+        const quota = token.chat_quota + "/" + token.total_chat_quota;
+        return `
+          <tr>
+            <td>${token.id}</td>
+            <td><code>${escapeHtml(token.token)}</code></td>
+            <td><span class="${badgeClass(token.pool)}">${escapeHtml(token.pool || "-")}</span></td>
+            <td><span class="${badgeClass(token.status)}">${escapeHtml(token.status || "-")}</span></td>
+            <td>${quota}</td>
+            <td>${token.priority ?? 0}</td>
+            <td>${escapeHtml(formatTime(token.last_used))}</td>
+            <td>${escapeHtml(token.remark || "-")}</td>
+            <td>
+              <div class="row-actions">
+                <button class="ghost" type="button" onclick="replaceToken(${token.id})">Replace</button>
+                <button class="ghost" type="button" onclick="editTokenRemark(${token.id})">Remark</button>
+                <button class="ghost" type="button" onclick="refreshToken(${token.id})">Refresh</button>
+                <button class="ghost" type="button" onclick="toggleToken(${token.id}, '${token.status === "active" ? "disabled" : "active"}')">${token.status === "active" ? "Disable" : "Enable"}</button>
+                <button class="ghost danger" type="button" onclick="deleteToken(${token.id})">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function renderKeys() {
+      if (!state.keys.length) {
+        keysTableBody.innerHTML = '<tr><td colspan="8" class="muted">No API keys found.</td></tr>';
+        return;
+      }
+      keysTableBody.innerHTML = state.keys.map((key) => `
+        <tr>
+          <td>${key.id}</td>
+          <td>${escapeHtml(key.name || "-")}</td>
+          <td><code>${escapeHtml(key.key)}</code></td>
+          <td><span class="${badgeClass(key.status)}">${escapeHtml(key.status || "-")}</span></td>
+          <td>${key.rate_limit}/min, ${key.daily_limit}/day</td>
+          <td>${key.daily_used} today, ${key.total_used} total</td>
+          <td>${escapeHtml(formatTime(key.last_used_at))}</td>
+          <td>
+            <div class="row-actions">
+              <button class="ghost" type="button" onclick="editKey(${key.id})">Edit</button>
+              <button class="ghost" type="button" onclick="toggleKey(${key.id}, '${key.status === "active" ? "inactive" : "active"}')">${key.status === "active" ? "Disable" : "Enable"}</button>
+              <button class="ghost warn" type="button" onclick="regenerateKey(${key.id})">Regenerate</button>
+              <button class="ghost danger" type="button" onclick="deleteKey(${key.id})">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    async function loadSummary() {
+      const status = await request("/admin/system/status");
+      document.getElementById("statTokens").textContent = String(status.tokens.total);
+      document.getElementById("statTokensDetail").textContent = status.tokens.active + " active";
+      document.getElementById("statKeys").textContent = String(status.api_keys.total);
+      document.getElementById("statKeysDetail").textContent = status.api_keys.active + " active";
+      document.getElementById("statVersion").textContent = status.version || "unknown";
+      document.getElementById("statConfig").textContent =
+        "App key source: " + (status.config.app_key_source || "unknown") +
+        ", DB overrides: " + (status.config.db_override_count ?? 0);
+    }
+
+    async function loadTokens() {
+      const payload = await request("/admin/tokens?page_size=100");
+      state.tokens = payload.data || [];
+      renderTokens();
+    }
+
+    async function loadKeys() {
+      const payload = await request("/admin/apikeys?page_size=100");
+      state.keys = payload.data || [];
+      renderKeys();
+    }
+
+    async function refreshAll() {
+      clearFlash();
+      await Promise.all([loadSummary(), loadTokens(), loadKeys()]);
+      heroStatusEl.textContent = "Signed in";
+    }
+
+    async function checkSession() {
+      try {
+        await request("/admin/verify");
+        loginSection.classList.add("hidden");
+        appSection.classList.remove("hidden");
+        await refreshAll();
+      } catch (_err) {
+        heroStatusEl.textContent = "Admin sign-in required";
+        loginSection.classList.remove("hidden");
+        appSection.classList.add("hidden");
+      }
+    }
+
+    async function replaceToken(id) {
+      const nextToken = window.prompt("Paste the new raw token:");
+      if (!nextToken) return;
+      const reclassify = window.confirm("Reclassify pool and quota from upstream after replacing this token?");
+      try {
+        await request("/admin/tokens/" + id + "/replace", {
+          method: "POST",
+          body: JSON.stringify({
+            token: nextToken.trim(),
+            reclassify: reclassify,
+            preserve_remark: true
+          })
+        });
+        showFlash("Token replaced.", "success");
+        await refreshAll();
+      } catch (err) {
+        showFlash(err.message, "error");
+      }
+    }
+
+    async function editTokenRemark(id) {
+      const current = state.tokens.find((item) => item.id === id);
+      const nextRemark = window.prompt("Update remark:", current ? (current.remark || "") : "");
+      if (nextRemark === null) return;
+      try {
+        await request("/admin/tokens/" + id, {
+          method: "PUT",
+          body: JSON.stringify({ remark: nextRemark })
+        });
+        showFlash("Token remark updated.", "success");
+        await loadTokens();
+      } catch (err) {
+        showFlash(err.message, "error");
+      }
+    }
+
+    async function refreshToken(id) {
+      try {
+        await request("/admin/tokens/" + id + "/refresh", { method: "POST" });
+        showFlash("Token refreshed.", "success");
+        await refreshAll();
+      } catch (err) {
+        showFlash(err.message, "error");
+      }
+    }
+
+    async function toggleToken(id, status) {
+      try {
+        await request("/admin/tokens/" + id, {
+          method: "PUT",
+          body: JSON.stringify({ status })
+        });
+        showFlash("Token updated.", "success");
+        await refreshAll();
+      } catch (err) {
+        showFlash(err.message, "error");
+      }
+    }
+
+    async function deleteToken(id) {
+      if (!window.confirm("Delete token #" + id + "?")) return;
+      try {
+        await request("/admin/tokens/" + id, { method: "DELETE" });
+        showFlash("Token deleted.", "success");
+        await refreshAll();
+      } catch (err) {
+        showFlash(err.message, "error");
+      }
+    }
+
+    async function editKey(id) {
+      const current = state.keys.find((item) => item.id === id);
+      if (!current) return;
+      const nextName = window.prompt("API key name:", current.name || "");
+      if (nextName === null || !nextName.trim()) return;
+      const nextRate = window.prompt("Rate limit / min:", String(current.rate_limit ?? 0));
+      if (nextRate === null) return;
+      const nextDaily = window.prompt("Daily limit:", String(current.daily_limit ?? 0));
+      if (nextDaily === null) return;
+      try {
+        await request("/admin/apikeys/" + id, {
+          method: "PATCH",
+          body: JSON.stringify({
+            name: nextName.trim(),
+            rate_limit: Number(nextRate),
+            daily_limit: Number(nextDaily)
+          })
+        });
+        showFlash("API key updated.", "success");
+        await refreshAll();
+      } catch (err) {
+        showFlash(err.message, "error");
+      }
+    }
+
+    async function toggleKey(id, status) {
+      try {
+        await request("/admin/apikeys/" + id, {
+          method: "PATCH",
+          body: JSON.stringify({ status })
+        });
+        showFlash("API key updated.", "success");
+        await refreshAll();
+      } catch (err) {
+        showFlash(err.message, "error");
+      }
+    }
+
+    async function regenerateKey(id) {
+      if (!window.confirm("Regenerate API key #" + id + "? Existing clients will stop working.")) return;
+      try {
+        const payload = await request("/admin/apikeys/" + id + "/regenerate", { method: "POST" });
+        showFlash("New API key generated. Copy it now.", "warn", payload.key || "");
+        await refreshAll();
+      } catch (err) {
+        showFlash(err.message, "error");
+      }
+    }
+
+    async function deleteKey(id) {
+      if (!window.confirm("Delete API key #" + id + "?")) return;
+      try {
+        await request("/admin/apikeys/" + id, { method: "DELETE" });
+        showFlash("API key deleted.", "success");
+        await refreshAll();
+      } catch (err) {
+        showFlash(err.message, "error");
+      }
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearFlash();
+      const button = document.getElementById("loginButton");
+      button.disabled = true;
+      try {
+        await request("/admin/login", {
+          method: "POST",
+          body: JSON.stringify({ key: document.getElementById("appKeyInput").value })
+        });
+        document.getElementById("appKeyInput").value = "";
+        loginSection.classList.add("hidden");
+        appSection.classList.remove("hidden");
+        showFlash("Signed in.", "success");
+        await refreshAll();
+      } catch (err) {
+        showFlash(err.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById("logoutButton").addEventListener("click", async () => {
+      try {
+        await request("/admin/logout", { method: "POST" });
+      } catch (_err) {
+      }
+      appSection.classList.add("hidden");
+      loginSection.classList.remove("hidden");
+      heroStatusEl.textContent = "Signed out";
+      showFlash("Signed out.", "success");
+    });
+
+    document.getElementById("refreshAllButton").addEventListener("click", async () => {
+      try {
+        await refreshAll();
+        showFlash("Data refreshed.", "success");
+      } catch (err) {
+        showFlash(err.message, "error");
+      }
+    });
+
+    document.getElementById("tokenImportForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const rawInput = document.getElementById("tokenImportInput").value;
+      const tokens = rawInput
+        .split(/[\n,]+/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+      if (!tokens.length) {
+        showFlash("Paste at least one token.", "error");
+        return;
+      }
+
+      const quotaValue = document.getElementById("tokenImportQuota").value.trim();
+      const body = {
+        operation: "import",
+        tokens,
+        pool: document.getElementById("tokenImportPool").value,
+        remark: document.getElementById("tokenImportRemark").value.trim()
+      };
+      if (quotaValue !== "") body.quota = Number(quotaValue);
+
+      const button = document.getElementById("tokenImportButton");
+      button.disabled = true;
+      try {
+        const payload = await request("/admin/tokens/batch", {
+          method: "POST",
+          body: JSON.stringify(body)
+        });
+        document.getElementById("tokenImportInput").value = "";
+        showFlash("Imported " + payload.success + " token(s).", payload.failed ? "warn" : "success");
+        await refreshAll();
+      } catch (err) {
+        showFlash(err.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById("keyCreateForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const name = document.getElementById("keyNameInput").value.trim();
+      if (!name) {
+        showFlash("API key name is required.", "error");
+        return;
+      }
+
+      const button = document.getElementById("keyCreateButton");
+      button.disabled = true;
+      try {
+        const payload = await request("/admin/apikeys", {
+          method: "POST",
+          body: JSON.stringify({
+            name,
+            rate_limit: Number(document.getElementById("keyRateInput").value || 0),
+            daily_limit: Number(document.getElementById("keyDailyInput").value || 0)
+          })
+        });
+        document.getElementById("keyNameInput").value = "";
+        showFlash("API key created. Copy it now.", "warn", payload.key || "");
+        await refreshAll();
+      } catch (err) {
+        showFlash(err.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.querySelectorAll(".tab").forEach((button) => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((tab) => tab.classList.remove("active"));
+        button.classList.add("active");
+        document.getElementById("tokensTab").classList.toggle("hidden", button.dataset.tab !== "tokensTab");
+        document.getElementById("keysTab").classList.toggle("hidden", button.dataset.tab !== "keysTab");
+      });
+    });
+
+    window.replaceToken = replaceToken;
+    window.editTokenRemark = editTokenRemark;
+    window.refreshToken = refreshToken;
+    window.toggleToken = toggleToken;
+    window.deleteToken = deleteToken;
+    window.editKey = editKey;
+    window.toggleKey = toggleKey;
+    window.regenerateKey = regenerateKey;
+    window.deleteKey = deleteKey;
+
+    checkSession();
+  </script>
+</body>
+</html>
