@@ -103,8 +103,9 @@ func DefaultConfig() *Config {
 			DefaultChatQuota:     50,
 			DefaultImageQuota:    20,
 			DefaultVideoQuota:    10,
-			QuotaRecoveryMode:    "auto",
-			SelectionAlgorithm:   "high_quota_first",
+			QuotaRecoveryMode:   "auto",
+			SelectionAlgorithm:  "high_quota_first",
+			SuperQuotaThreshold: 100,
 		},
 	}
 }

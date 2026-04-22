@@ -326,8 +326,13 @@ func TestDetectImportProfile_ClassifiesPaidAndFree(t *testing.T) {
 		wantPool  string
 		wantPrio  int
 	}{
-		{name: "paid token", remaining: 50, wantPool: PoolSuper, wantPrio: 10},
-		{name: "free token", remaining: 12, wantPool: PoolBasic, wantPrio: 0},
+		// Observed real-world values: SuperGrok=140, free=60, threshold=100.
+		{name: "supergrok account (140 quota)", remaining: 140, wantPool: PoolSuper, wantPrio: 10},
+		{name: "just above threshold (101)", remaining: 101, wantPool: PoolSuper, wantPrio: 10},
+		{name: "exactly at threshold (100)", remaining: 100, wantPool: PoolSuper, wantPrio: 10},
+		{name: "just below threshold (99)", remaining: 99, wantPool: PoolBasic, wantPrio: 0},
+		{name: "free account (60 quota)", remaining: 60, wantPool: PoolBasic, wantPrio: 0},
+		{name: "very low quota (5)", remaining: 5, wantPool: PoolBasic, wantPrio: 0},
 	}
 
 	for _, tt := range tests {
@@ -339,8 +344,9 @@ func TestDetectImportProfile_ClassifiesPaidAndFree(t *testing.T) {
 			defer server.Close()
 
 			profile, err := DetectImportProfile(context.Background(), "test-token", server.URL, &config.TokenConfig{
-				DefaultImageQuota: 9,
-				DefaultVideoQuota: 4,
+				DefaultImageQuota:   9,
+				DefaultVideoQuota:   4,
+				SuperQuotaThreshold: 100, // explicit: threshold between free(60) and super(140)
 			})
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)

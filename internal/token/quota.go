@@ -50,7 +50,10 @@ type RateLimitsResponse struct {
 
 const rateLimitsPath = "/rest/rate-limits"
 const minCoolingDuration = 5 * time.Minute
-const premiumQuotaThreshold = 30
+
+// defaultSuperQuotaThreshold is the fallback classification threshold when config is zero.
+// Chosen to sit safely between observed free tier (60) and SuperGrok (140).
+const defaultSuperQuotaThreshold = 100
 
 // Consume deducts quota from the token for the given category.
 // cost allows variable deduction for different model types.
@@ -110,7 +113,8 @@ func (m *TokenManager) SyncQuota(ctx context.Context, token *store.Token, baseUR
 
 	// Auto-assign Pool and Priority based on quota capacity.
 	// Premium accounts typically receive materially higher query limits.
-	if token.InitialChatQuota >= premiumQuotaThreshold {
+	threshold := m.superQuotaThreshold()
+	if token.InitialChatQuota >= threshold {
 		if token.Pool == "" {
 			token.Pool = PoolSuper
 		}
@@ -209,7 +213,7 @@ func DetectImportProfile(ctx context.Context, authToken, baseURL string, cfg *co
 	}
 
 	chatQuota := resp.RemainingQueries
-	pool, priority := classifyQuotaCapacity(chatQuota)
+	pool, priority := classifyQuotaCapacity(chatQuota, effectiveSuperQuotaThreshold(cfg))
 	imageQuota := 20
 	videoQuota := 10
 	if cfg != nil {
@@ -233,11 +237,27 @@ func DetectImportProfile(ctx context.Context, authToken, baseURL string, cfg *co
 	}, nil
 }
 
-func classifyQuotaCapacity(chatQuota int) (pool string, priority int) {
-	if chatQuota >= premiumQuotaThreshold {
+func classifyQuotaCapacity(chatQuota, threshold int) (pool string, priority int) {
+	if threshold <= 0 {
+		threshold = defaultSuperQuotaThreshold
+	}
+	if chatQuota >= threshold {
 		return PoolSuper, 10
 	}
 	return PoolBasic, 0
+}
+
+// superQuotaThreshold returns the effective classification threshold from config.
+func (m *TokenManager) superQuotaThreshold() int {
+	return effectiveSuperQuotaThreshold(m.cfg)
+}
+
+// effectiveSuperQuotaThreshold resolves the threshold from a TokenConfig pointer (nil-safe).
+func effectiveSuperQuotaThreshold(cfg *config.TokenConfig) int {
+	if cfg != nil && cfg.SuperQuotaThreshold > 0 {
+		return cfg.SuperQuotaThreshold
+	}
+	return defaultSuperQuotaThreshold
 }
 
 func classifyRateLimitsError(resp *http.Response) error {

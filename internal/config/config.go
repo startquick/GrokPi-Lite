@@ -111,6 +111,10 @@ type TokenConfig struct {
 	DefaultVideoQuota    int      `toml:"default_video_quota"`
 	QuotaRecoveryMode    string   `toml:"quota_recovery_mode"`
 	SelectionAlgorithm   string   `toml:"selection_algorithm" json:"selection_algorithm"`
+	// SuperQuotaThreshold is the minimum remainingQueries (from /rest/rate-limits) required
+	// to classify a token as PoolSuper. Accounts returning a value below this threshold
+	// are classified as PoolBasic. Default: 100 (safely between observed free=60 and SuperGrok=140).
+	SuperQuotaThreshold int `toml:"super_quota_threshold"`
 }
 
 // ApplyDBOverrides applies database config entries on top of file-based config.
@@ -380,6 +384,12 @@ func (c *Config) ApplyDBOverrides(kvs map[string]string) []string {
 		case "token.selection_algorithm":
 			if v != "" {
 				c.Token.SelectionAlgorithm = v
+			}
+		case "token.super_quota_threshold":
+			if n, err := strconv.Atoi(v); err == nil {
+				c.Token.SuperQuotaThreshold = n
+			} else {
+				slog.Warn("config: invalid int override ignored", "key", k, "value", v, "error", err)
 			}
 		default:
 			matched = false
