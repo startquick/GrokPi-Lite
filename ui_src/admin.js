@@ -80,7 +80,25 @@ function openModal({ title, msg = '', fields = [], confirmTxt = 'Confirm', confi
     el.id = 'mf_' + f.key;
     el.value = f.value ?? '';
     if (f.placeholder) el.placeholder = f.placeholder;
-    lbl.appendChild(el); fieldsEl.appendChild(lbl);
+    if (f.readonly) {
+      el.readOnly = true;
+      el.style.fontFamily = 'var(--font-mono)';
+      el.style.fontSize = '12px';
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'display:flex;gap:8px;align-items:center;';
+      const copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.className = 'ghost';
+      copyBtn.style.cssText = 'flex-shrink:0;padding:8px 14px;';
+      copyBtn.textContent = 'Copy';
+      copyBtn.addEventListener('click', () => clip(el.value));
+      wrapper.appendChild(el);
+      wrapper.appendChild(copyBtn);
+      lbl.appendChild(wrapper);
+    } else {
+      lbl.appendChild(el);
+    }
+    fieldsEl.appendChild(lbl);
   }
   const btn = document.getElementById('mConfirm');
   btn.textContent = confirmTxt;
@@ -263,7 +281,6 @@ async function refreshKeys() {
       <td>
         <div class="flex items-center gap-2">
           <code style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${esc(k.key)}</code>
-          <button class="ghost" style="padding: 4px;" onclick="clip('${esc(k.key)}')">${iCopy()}</button>
         </div>
       </td>
       <td><span class="${bc(k.status)}">${esc(k.status)}</span></td>
@@ -415,7 +432,13 @@ function doRegenKey(id) {
     onConfirm: async () => {
       try {
         const r = await req(`/admin/apikeys/${id}/regenerate`, { method: 'POST' });
-        flash('New API Key Generated. COPY IT NOW!', 'warn', r.key);
+        openModal({
+          title: 'Key Regenerated', 
+          msg: 'Please update your clients with the new secret key. You will not be able to view it again.', 
+          fields: [{ key: 'newKey', label: 'Secret Key', value: r.key, readonly: true }],
+          confirmTxt: 'Close',
+          onConfirm: () => {}
+        });
         refreshKeys();
       } catch(e) { flash(e.message, 'error'); }
     }
@@ -509,7 +532,13 @@ document.getElementById('keyCreateForm').addEventListener('submit', async e => {
   try {
     const res = await req('/admin/apikeys', { method:'POST', body: JSON.stringify({ name, rate_limit: rate, daily_limit: daily }) });
     document.getElementById('keyNameInput').value = '';
-    flash('API Key Created! COPY IT NOW.', 'success', res.key);
+    openModal({
+      title: 'API Key Generated', 
+      msg: 'Please store this key securely. You will not be able to view it again.', 
+      fields: [{ key: 'newKey', label: 'Secret Key', value: res.key, readonly: true }],
+      confirmTxt: 'Close',
+      onConfirm: () => {}
+    });
     refreshKeys();
   } catch(err) { flash(err.message, 'error'); }
   finally { btn.disabled = false; }
