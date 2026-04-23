@@ -42,7 +42,8 @@ clean:
 # Lihat docs/deployment-checklist-lokal.md untuk setup awal.
 
 docker-up:
-	docker compose up -d --build
+	docker compose build --no-cache grokpi
+	docker compose up -d
 
 docker-down:
 	docker compose down

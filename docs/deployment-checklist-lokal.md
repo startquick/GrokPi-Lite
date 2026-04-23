@@ -203,12 +203,13 @@ Invoke-RestMethod `
 
 ```powershell
 git pull
-docker compose up -d --build
+docker compose build --no-cache grokpi
+docker compose up -d
 # atau
 make docker-up
 ```
 
-Perintah `--build` akan rebuild image secara otomatis. Tidak perlu `make build` manual.
+Opsi `--no-cache` memastikan image Docker membuang state lama dan membungkus ulang pembaruan file terbaru. Anda tidak perlu menjalankan `make build` manual karena semuanya dikompilasi (otomatis rebuild) dengan kode terbaru di dalam container.
 
 ---
 

@@ -234,7 +234,8 @@ Bila Anda mendapat notifikasi pembaruan di Github:
 ```bash
 cd ~/GrokPi-Lite
 git pull
-docker compose up -d --build
+docker compose build --no-cache grokpi
+docker compose up -d
 ```
-Perintah `--build` akan otomatis rebuild image dengan kode terbaru — tidak perlu `make build` manual.
+Perintah `build --no-cache` memastikan image di-recompile murni dari awal menggunakan layer multi-stage terbaru.
 Jika Anda menyimpan perubahan lokal pada `config.toml` atau file deploy lain, backup dulu sebelum update dan selesaikan konflik Git secara manual.

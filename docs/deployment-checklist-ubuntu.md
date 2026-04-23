@@ -311,9 +311,10 @@ Gunakan alur update yang tidak destruktif:
 ```bash
 cd ~/GrokPi-Lite
 git pull
-docker compose up -d --build
+docker compose build --no-cache grokpi
+docker compose up -d
 ```
 
-`--build` otomatis rebuild image dengan kode terbaru — tidak perlu `make build` manual.
+Opsi `--no-cache` memastikan image Docker membuang state lama dan membungkus ulang pembaruan file terbaru (termasuk komponen frontend/UI). Anda tidak perlu menjalankan `make build` manual karena semuanya dikompilasi (otomatis rebuild) dengan kode terbaru di dalam container.
 
 Jika ada perubahan lokal penting pada `config.toml` atau file deploy lain, backup dulu dan selesaikan konflik Git secara manual.
