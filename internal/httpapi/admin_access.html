@@ -399,6 +399,15 @@ tr:hover td { background-color: var(--bg-elevated); }
 .qfill.hi { background-color: var(--accent-green); }
 .qfill.mid { background-color: var(--accent-amber); }
 .qfill.lo { background-color: var(--accent-red); }
+/* q-bar-* classes (used by qBar() JS helper) */
+.q-bar-wrapper { min-width: 90px; }
+.q-bar-text { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+.q-bar-text .q-sep { color: var(--text-muted, rgba(255,255,255,0.3)); }
+.q-bar-bg { height: 4px; background-color: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+.q-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
+.q-bar-fill.good { background-color: var(--accent-green); }
+.q-bar-fill.warn { background-color: var(--accent-amber); }
+.q-bar-fill.danger { background-color: var(--accent-red); }
 
 /* Dropdowns */
 .dropdown { position: relative; display: inline-block; }
@@ -1063,10 +1072,10 @@ window.addEventListener('hashchange', () => {
 /* ─── Helpers Components ─── */
 function bc(v) { return 'badge ' + String(v || '').replace(/[^a-zA-Z0-9_-]/g, ''); }
 function qBar(cur, tot) {
-  if (!tot) return `<div class="q-bar-wrapper"><div class="q-bar-text"><span>${cur}</span><span>—</span></div></div>`;
+  if (!tot) return `<div class="q-bar-wrapper"><div class="q-bar-text"><span>${cur}</span><span class="q-sep">/</span><span>—</span></div></div>`;
   const pct = Math.max(0, Math.min(100, Math.round(cur / tot * 100)));
   const cls = pct >= 80 ? 'good' : pct >= 40 ? 'warn' : 'danger';
-  return `<div class="q-bar-wrapper"><div class="q-bar-text"><span>${fmtNum(cur)}</span><span>${fmtNum(tot)}</span></div><div class="q-bar-bg"><div class="q-bar-fill ${cls}" style="width:${pct}%"></div></div></div>`;
+  return `<div class="q-bar-wrapper"><div class="q-bar-text"><span>${fmtNum(cur)}</span><span class="q-sep">/</span><span>${fmtNum(tot)}</span></div><div class="q-bar-bg"><div class="q-bar-fill ${cls}" style="width:${pct}%"></div></div></div>`;
 }
 
 /* ─── LOADERS ─── */
