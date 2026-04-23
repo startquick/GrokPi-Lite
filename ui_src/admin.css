@@ -498,6 +498,8 @@ tr:hover td { background-color: var(--bg-elevated); }
 .hidden { display: none !important; }
 .flex { display: flex; }
 .items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-between { justify-content: space-between; }
 .gap-2 { gap: 8px; }
 .gap-4 { gap: 16px; }
 
