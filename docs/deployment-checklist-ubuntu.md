@@ -69,16 +69,6 @@ docker --version
 docker compose version
 ```
 
-4. Install Go 1.24+ jika binary akan dibuild di VPS.
-```bash
-sudo rm -rf /usr/local/go
-curl -fsSL "https://go.dev/dl/go1.24.1.linux-amd64.tar.gz" -o /tmp/go.tar.gz
-sudo tar -C /usr/local -xzf /tmp/go.tar.gz
-echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
-source ~/.bashrc
-go version
-```
-
 ## 4. Ambil Source Code
 
 1. Clone repository.
