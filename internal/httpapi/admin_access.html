@@ -1,370 +1,846 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GrokPi Access Console</title>
+  <title>GrokPi Admin Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --bg: #f5f1e8;
-      --panel: #fffaf1;
-      --ink: #1f1a15;
-      --muted: #6d6258;
-      --line: #d8ccb9;
-      --accent: #005f73;
-      --accent-h: #004d5e;
-      --accent2: #ca6702;
-      --danger: #a61b1b;
-      --danger-h: #8a1515;
-      --good: #1f7a4d;
-      --warn: #9a5d00;
-      --sh: 0 8px 24px rgba(60,40,20,.12);
-      --sh-sm: 0 2px 8px rgba(60,40,20,.08);
-      --sh-lg: 0 20px 48px rgba(60,40,20,.18);
-      --r: 14px; --r-sm: 9px;
-      --ease: .15s ease;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;color:var(--ink);font-family:'Inter',sans-serif;font-size:15px;line-height:1.5;min-height:100vh;
-      background:radial-gradient(circle at top left,rgba(0,95,115,.10),transparent 30%),
-        radial-gradient(circle at top right,rgba(202,103,2,.14),transparent 25%),
-        linear-gradient(180deg,#f7f3eb 0%,#efe7d8 100%)}
-    .shell{max-width:1240px;margin:0 auto;padding:24px 18px 56px}
+:root {
+  --bg-primary: #000000;
+  --bg-surface: #141414;
+  --bg-elevated: #1a1a1a;
+  --bg-hover: #1f1f1f;
+  --bg-input: #0a0a0a;
 
-    /* Hero */
-    .hero{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;
-      padding:22px 28px;border:1px solid rgba(31,26,21,.08);border-radius:calc(var(--r) + 4px);
-      background:linear-gradient(135deg,rgba(255,250,241,.97),rgba(247,239,226,.97));box-shadow:var(--sh)}
-    .eyebrow{font-size:.75rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
-    .hero h1{margin:0 0 5px;font-size:clamp(1.7rem,4vw,2.6rem);font-weight:600;line-height:1}
-    .hero p{margin:0;color:var(--muted);font-size:.88rem;max-width:560px}
-    .hero-r{display:flex;align-items:center;gap:10px;flex-shrink:0}
-    #heroStatus{font-size:.84rem;color:var(--muted)}
+  --border: #262626;
+  --border-hover: #333333;
+  --border-focus: #525252;
 
-    /* Stats */
-    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px}
-    .stat{padding:18px 20px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line);box-shadow:var(--sh-sm)}
-    .stat strong{display:block;font-size:1.65rem;font-weight:600;margin:6px 0 3px}
-    .stat .det{font-size:.8rem;color:var(--muted)}
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1a1;
+  --text-tertiary: #666666;
 
-    /* Tabs */
-    .tabs-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;flex-wrap:wrap}
-    .tabs{display:flex;gap:6px}
-    .tab{padding:8px 20px;border-radius:999px;border:1px solid var(--line);background:rgba(0,95,115,.06);
-      color:var(--accent);font:inherit;font-size:.88rem;font-weight:500;cursor:pointer;
-      transition:background var(--ease),color var(--ease),border-color var(--ease)}
-    .tab:hover{background:rgba(0,95,115,.12)}
-    .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  --accent-green: #22c55e;
+  --accent-red: #ef4444;
+  --accent-amber: #f59e0b;
+  --accent-blue: #3b82f6;
+  --accent-cyan: #06b6d4;
 
-    /* Panels */
-    .stack{display:grid;gap:16px}
-    .panel,.list-panel{padding:22px 24px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line);box-shadow:var(--sh-sm)}
-    .panel h2,.list-panel h2{margin:0 0 4px;font-size:1.05rem;font-weight:600}
-    .panel p,.list-panel p{margin:0 0 16px;color:var(--muted);font-size:.86rem}
+  --btn-primary-bg: #ffffff;
+  --btn-primary-fg: #000000;
+  --btn-ghost-bg: transparent;
+  --btn-ghost-hover: #1f1f1f;
 
-    /* Form */
-    label{display:grid;gap:5px;font-size:.86rem;font-weight:500}
-    input,textarea,select{width:100%;padding:9px 12px;border-radius:var(--r-sm);border:1px solid var(--line);
-      background:#fff;color:var(--ink);font:inherit;font-size:.88rem;
-      transition:border-color var(--ease),box-shadow var(--ease)}
-    input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,95,115,.12)}
-    textarea{min-height:110px;resize:vertical}
-    .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:14px;align-items:end;margin-top:14px}
-    .f-actions{display:flex;gap:10px;align-items:center;margin-top:14px}
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
 
-    /* Buttons */
-    button{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border:1px solid transparent;
-      border-radius:999px;background:var(--accent);color:#fff;font:inherit;font-size:.86rem;font-weight:500;
-      cursor:pointer;white-space:nowrap;transition:background var(--ease),transform var(--ease),opacity var(--ease)}
-    button:hover{background:var(--accent-h)}
-    button:active{transform:scale(.98)}
-    button.sec{background:transparent;color:var(--accent);border-color:rgba(0,95,115,.28)}
-    button.sec:hover{background:rgba(0,95,115,.07)}
-    button.warn{background:var(--accent2)}
-    button.warn:hover{background:#b05a00}
-    button.danger{background:var(--danger)}
-    button.danger:hover{background:var(--danger-h)}
-    button.ghost{padding:7px 11px;border-radius:var(--r-sm);background:transparent;color:var(--muted);border-color:var(--line);font-size:.82rem}
-    button.ghost:hover{background:rgba(31,26,21,.06);color:var(--ink)}
-    button.ghost.acc{color:var(--accent)}
-    button.ghost.acc:hover{background:rgba(0,95,115,.08)}
-    button.ghost.dng{color:var(--danger)}
-    button.ghost.dng:hover{background:rgba(166,27,27,.08);border-color:rgba(166,27,27,.2)}
-    button:disabled{opacity:.5;cursor:not-allowed;transform:none}
-    .hidden{display:none!important}
+  --ease: 0.15s ease;
+}
 
-    /* Flash */
-    #flash{margin-bottom:16px;padding:14px 18px;border-radius:var(--r-sm);border:1px solid transparent;font-size:.9rem}
-    #flash.warn{border-color:rgba(154,93,0,.25);background:rgba(154,93,0,.09)}
-    #flash.error{border-color:rgba(166,27,27,.25);background:rgba(166,27,27,.09)}
-    .fkey{margin-top:8px;padding:10px 14px;background:rgba(0,0,0,.06);border-radius:7px;
-      font-family:'DM Mono','Courier New',monospace;font-size:.83rem;word-break:break-all}
-    .fcopy{display:flex;align-items:center;gap:8px;margin-top:8px}
-    .fnote{font-size:.78rem;color:var(--muted)}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+}
 
-    /* Toast */
-    #toast{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:var(--r-sm);
-      background:var(--ink);color:#fff;font-size:.86rem;font-weight:500;box-shadow:var(--sh-lg);z-index:1000;
-      transform:translateY(16px);opacity:0;transition:transform .22s ease,opacity .22s ease;pointer-events:none}
-    #toast.show{transform:translateY(0);opacity:1}
-    #toast.ok{background:var(--good)}
-    #toast.err{background:var(--danger)}
-    #toast.inf{background:var(--accent)}
+/* Typography Helpers */
+.text-xs { font-size: 12px; }
+.text-sm { font-size: 13px; }
+.text-base { font-size: 14px; }
+.text-lg { font-size: 16px; }
+.text-xl { font-size: 20px; }
+.text-2xl { font-size: 24px; }
+.text-muted { color: var(--text-secondary); }
 
-    /* Table */
-    .table-wrap{overflow:auto;border-radius:var(--r-sm);border:1px solid var(--line)}
-    table{width:100%;border-collapse:collapse;min-width:800px;background:#fff}
-    th,td{padding:10px 12px;border-bottom:1px solid rgba(216,204,185,.55);text-align:left;vertical-align:middle;font-size:.86rem}
-    th{background:#f5ede0;color:var(--muted);font-size:.73rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
-    tr:last-child td{border-bottom:none}
-    tr:hover td{background:rgba(0,95,115,.02)}
-    code{font-family:'DM Mono','Courier New',monospace;font-size:.82em;word-break:break-all;color:var(--ink)}
+/* Layout */
+.app-layout {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
 
-    /* Badges */
-    .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;
-      font-size:.73rem;font-weight:500;border:1px solid rgba(31,26,21,.1);background:rgba(31,26,21,.06)}
-    .badge.active{background:rgba(31,122,77,.12);color:var(--good);border-color:rgba(31,122,77,.2)}
-    .badge.cooling{background:rgba(154,93,0,.12);color:var(--warn);border-color:rgba(154,93,0,.2)}
-    .badge.disabled,.badge.expired,.badge.inactive{background:rgba(166,27,27,.12);color:var(--danger);border-color:rgba(166,27,27,.2)}
-    .badge.ssoSuper{background:rgba(0,95,115,.12);color:var(--accent);border-color:rgba(0,95,115,.2)}
-    .badge.ssoBasic{background:rgba(202,103,2,.12);color:var(--accent2);border-color:rgba(202,103,2,.2)}
-    .badge.high{background:rgba(0,95,115,.11);color:var(--accent);border-color:rgba(0,95,115,.18)}
-    .badge.norm{background:rgba(109,98,88,.09);color:var(--muted)}
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background-color: var(--bg-input);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+  z-index: 40;
+}
 
-    /* Quota bar */
-    .qwrap{min-width:80px}
-    .qtxt{font-size:.84rem;font-weight:500;margin-bottom:3px}
-    .qbar{height:4px;background:rgba(31,26,21,.1);border-radius:999px;overflow:hidden}
-    .qfill{height:100%;border-radius:999px;transition:width .3s ease}
-    .qfill.hi{background:var(--good)}.qfill.mid{background:var(--warn)}.qfill.lo{background:var(--danger)}
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px 32px;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
 
-    /* Row actions & dropdown */
-    .row-acts{display:flex;gap:6px;align-items:center}
-    .dropdown{position:relative}
-    .dd-menu{position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--line);
-      border-radius:var(--r-sm);box-shadow:var(--sh);min-width:155px;z-index:100;overflow:hidden}
-    .dd-menu button{display:flex;width:100%;padding:10px 15px;border-radius:0;background:transparent;
-      color:var(--ink);border:none;font-size:.86rem;justify-content:flex-start}
-    .dd-menu button:hover{background:rgba(0,95,115,.06)}
-    .dd-menu button.dng{color:var(--danger);background:transparent}
-    .dd-menu button.dng:hover{background:rgba(166,27,27,.07)}
-    .dd-div{height:1px;background:var(--line);margin:3px 0}
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
-    /* Modal */
-    .modal-ov{position:fixed;inset:0;background:rgba(31,26,21,.45);backdrop-filter:blur(4px);
-      z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;
-      opacity:0;transition:opacity .2s ease}
-    .modal-ov.show{opacity:1}
-    .modal{background:var(--panel);border:1px solid var(--line);border-radius:calc(var(--r) + 2px);
-      box-shadow:var(--sh-lg);padding:26px 28px;max-width:460px;width:100%;
-      transform:translateY(10px);transition:transform .2s ease}
-    .modal-ov.show .modal{transform:translateY(0)}
-    .modal h3{margin:0 0 7px;font-size:1.05rem;font-weight:600}
-    .modal .mdesc{margin:0 0 16px;color:var(--muted);font-size:.88rem;line-height:1.5}
-    .modal-fields{display:grid;gap:13px;margin-bottom:18px}
-    .modal-acts{display:flex;gap:9px;justify-content:flex-end}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  transition: background var(--ease), color var(--ease);
+  cursor: pointer;
+}
 
-    /* Login */
-    #loginSection{max-width:400px;margin:0 auto}
+.nav-item:hover, .nav-item.active {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
 
-    /* Spinner */
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.35);
-      border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+.nav-item svg { width: 18px; height: 18px; opacity: 0.8; }
+.sidebar-brand svg { width: 32px; height: 32px; flex-shrink: 0; opacity: 0.9; }
+.nav-item:hover svg, .nav-item.active svg { opacity: 1; }
 
-    @media(max-width:660px){
-      .hero{flex-direction:column;align-items:flex-start}
-      .hero-r{width:100%;justify-content:space-between}
-      .tabs-bar{flex-direction:column;align-items:flex-start}
-    }
+.sidebar-footer {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.page-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 48px 32px 64px;
+  width: 100%;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.page-container.fade-out {
+  opacity: 0;
+}
+
+.page-header {
+  margin-bottom: 32px;
+}
+
+.page-header h1 {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* Login View specific */
+#loginView {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--bg-primary);
+  position: fixed;
+  inset: 0;
+  z-index: 100; /* above everything else */
+}
+
+/* Cards & Panels */
+.card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.card h2 {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.card p.desc {
+  margin: 0 0 20px 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* Stats */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  line-height: 1;
+  word-break: break-all;
+}
+
+.stat-desc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* Buttons */
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+  border: 1px solid transparent;
+  transition: all var(--ease);
+  outline: none;
+}
+
+button:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+button:active:not(:disabled) { transform: translateY(0); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+button.ghost {
+  background-color: var(--btn-ghost-bg);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+button.ghost:hover:not(:disabled) {
+  background-color: var(--btn-ghost-hover);
+  border-color: var(--border-hover);
+}
+
+button.danger {
+  background-color: #ef4444;
+  color: white;
+}
+button.danger:hover:not(:disabled) { background-color: #dc2626; }
+
+button.ghost.danger-text { color: var(--accent-red); }
+button.ghost.danger-text:hover:not(:disabled) { 
+  background-color: rgba(239, 68, 68, 0.1); 
+  border-color: rgba(239, 68, 68, 0.2); 
+}
+
+/* Forms & Inputs */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+input, textarea, select {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  padding: 10px 14px;
+  transition: border-color var(--ease);
+  width: 100%;
+  outline: none;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--border-focus);
+}
+
+textarea { min-height: 100px; resize: vertical; }
+
+code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background-color: var(--bg-input);
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+/* Tables */
+.table-wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background-color: var(--bg-surface);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  min-width: 800px;
+}
+
+th {
+  background-color: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  font-size: 13px;
+}
+
+tr:last-child td { border-bottom: none; }
+tr:hover td { background-color: var(--bg-elevated); }
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  background-color: rgba(38, 38, 38, 0.5);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.badge.active, .badge.success { background-color: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.2); color: var(--accent-green); }
+.badge.disabled, .badge.expired, .badge.inactive, .badge.error { background-color: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+.badge.cooling, .badge.warn, .badge.warning { background-color: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.2); color: var(--accent-amber); }
+.badge.ssoSuper { background-color: rgba(6, 182, 212, 0.1); border-color: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); }
+.badge.ssoBasic { background-color: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+
+/* Quota Bar */
+.qwrap { min-width: 90px; }
+.qtxt { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: flex; justify-content: space-between; }
+.qbar { height: 4px; background-color: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+.qfill { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
+.qfill.hi { background-color: var(--accent-green); }
+.qfill.mid { background-color: var(--accent-amber); }
+.qfill.lo { background-color: var(--accent-red); }
+
+/* Dropdowns */
+.dropdown { position: relative; display: inline-block; }
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px;
+  min-width: 140px;
+  z-index: 50;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+}
+.dropdown-menu button {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--text-primary);
+  border: none;
+  font-size: 13px;
+  border-radius: 8px;
+}
+.dropdown-menu button:hover { background-color: var(--bg-hover); }
+.dropdown-menu button.danger { color: var(--accent-red); }
+.dd-div { height: 1px; background-color: var(--border); margin: 4px 0; }
+
+/* Modal */
+.modal-ov {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.modal-ov.show { opacity: 1; pointer-events: all; }
+.modal {
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px 28px;
+  max-width: 460px;
+  width: 100%;
+  transform: translateY(10px) scale(0.98);
+  transition: transform 0.2s ease;
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
+}
+.modal-ov.show .modal { transform: translateY(0) scale(1); }
+.modal h3 { margin: 0 0 8px 0; font-size: 18px; font-weight: 500; }
+.modal p.desc { color: var(--text-secondary); font-size: 14px; margin: 0 0 24px 0; }
+.modal-fields { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+.modal-acts { display: flex; justify-content: flex-end; gap: 12px; }
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 13px;
+  z-index: 1000;
+  transform: translateY(20px);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#toast.show { transform: translateY(0); opacity: 1; }
+#toast.ok { border-left: 3px solid var(--accent-green); }
+#toast.err { border-left: 3px solid var(--accent-red); }
+
+/* Flash (Persistent) */
+#flash {
+  margin-bottom: 24px;
+  padding: 16px;
+  border-radius: 12px;
+}
+#flash.success { background-color: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); }
+#flash.warn { background-color: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); }
+#flash.error { background-color: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); }
+.fkey {
+  font-family: var(--font-mono); font-size: 13px;
+  background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;
+  border: 1px solid var(--border); word-break: break-all; margin: 12px 0 8px;
+}
+
+/* Utils */
+.hidden { display: none !important; }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.gap-2 { gap: 8px; }
+.gap-4 { gap: 16px; }
+
+/* Spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: #fff; border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; z-index: 100;
+    transform: translateX(-100%);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .page-container { padding: 32px 20px 64px; }
+  .form-grid { grid-template-columns: 1fr; }
+}
+
   </style>
 </head>
 <body>
-<div class="shell">
-
-  <!-- Hero -->
-  <header class="hero">
-    <div>
-      <div class="eyebrow">Embedded Admin Console</div>
-      <h1>GrokPi Access</h1>
-      <p>Manage upstream SSO tokens and client API keys from a browser, without SSH or direct server access.</p>
-    </div>
-    <div class="hero-r">
-      <span id="heroStatus" class="muted">Checking session…</span>
-      <button id="logoutButton" class="sec hidden" type="button">Sign out</button>
-    </div>
-  </header>
-
-  <!-- Toast -->
-  <div id="toast" role="status" aria-live="polite"></div>
-
-  <!-- Flash (persistent — for errors + key reveal) -->
-  <div id="flash" class="hidden" role="alert"></div>
-
-  <!-- Login -->
-  <section id="loginSection" class="panel">
-    <h2>Admin Login</h2>
-    <p>Sign in with the current <code>app_key</code> to manage tokens and API keys.</p>
-    <form id="loginForm" class="stack">
-      <label>App key
-        <input id="appKeyInput" type="password" name="key" placeholder="Enter app_key" autocomplete="current-password" required>
-      </label>
-      <div class="f-actions">
-        <button id="loginButton" type="submit">Sign in</button>
-      </div>
-    </form>
-  </section>
-
-  <!-- App -->
-  <section id="appSection" class="hidden">
-    <div class="stats">
-      <article class="stat">
-        <div class="eyebrow">Token pool</div>
-        <strong id="statTokens">—</strong>
-        <div class="det" id="statTokensDetail">Loading…</div>
-      </article>
-      <article class="stat">
-        <div class="eyebrow">API keys</div>
-        <strong id="statKeys">—</strong>
-        <div class="det" id="statKeysDetail">Loading…</div>
-      </article>
-      <article class="stat">
-        <div class="eyebrow">Runtime</div>
-        <strong id="statVersion" style="font-size:1rem;word-break:break-all">—</strong>
-        <div class="det" id="statConfig">Config source unknown</div>
-      </article>
-    </div>
-
-    <div class="tabs-bar">
-      <div class="tabs">
-        <button class="tab active" data-tab="tokensTab" type="button">Tokens</button>
-        <button class="tab" data-tab="keysTab" type="button">API Keys</button>
-      </div>
-      <button id="refreshAllButton" class="sec" type="button">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
-        Refresh
-      </button>
-    </div>
-
-    <!-- TOKENS TAB -->
-    <div id="tokensTab" class="stack">
-      <section class="panel">
-        <h2>Import Tokens</h2>
-        <p>Paste one or more SSO tokens. Auto-detect will classify basic vs super when pool and quota are left empty.</p>
-        <form id="tokenImportForm" class="stack">
-          <label>Tokens
-            <textarea id="tokenImportInput" placeholder="Paste tokens here, separated by comma or newline"></textarea>
-          </label>
-          <div class="form-grid">
-            <label>Default pool
-              <select id="tokenImportPool">
-                <option value="">Auto detect</option>
-                <option value="ssoBasic">ssoBasic</option>
-                <option value="ssoSuper">ssoSuper</option>
-              </select>
-            </label>
-            <label>Chat quota
-              <input id="tokenImportQuota" type="number" min="0" placeholder="Auto">
-            </label>
-            <label>Remark
-              <input id="tokenImportRemark" type="text" maxlength="500" placeholder="Optional note">
-            </label>
-          </div>
-          <div class="f-actions">
-            <button id="tokenImportButton" type="submit">Import tokens</button>
-          </div>
-        </form>
-      </section>
-
-      <section class="list-panel">
-        <h2>Current Tokens</h2>
-        <p>Replace, refresh, enable, disable, or delete tokens from here.</p>
-        <div class="table-wrap">
-          <table>
-            <thead><tr>
-              <th>ID</th><th>Token</th><th>Tier</th><th>Status</th>
-              <th>Quota</th><th>Last used</th><th>Remark</th><th>Actions</th>
-            </tr></thead>
-            <tbody id="tokensTableBody">
-              <tr><td colspan="8" class="muted">Loading tokens…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-
-    <!-- KEYS TAB -->
-    <div id="keysTab" class="stack hidden">
-      <section class="panel">
-        <h2>Create API Key</h2>
-        <p>Create a client key in <code>sk-…</code> format for OpenAI-compatible and Anthropic-compatible clients.</p>
-        <form id="keyCreateForm" class="form-grid">
-          <label>Name
-            <input id="keyNameInput" type="text" placeholder="e.g. Production Dify" required>
-          </label>
-          <label>Rate limit / min
-            <input id="keyRateInput" type="number" min="0" value="60">
-          </label>
-          <label>Daily limit
-            <input id="keyDailyInput" type="number" min="0" value="1000">
-          </label>
-          <div class="f-actions" style="margin-top:0">
-            <button id="keyCreateButton" type="submit">Create key</button>
-          </div>
-        </form>
-      </section>
-
-      <section class="list-panel">
-        <h2>Current API Keys</h2>
-        <p>Keys are masked in the table. Full values are shown only after create or regenerate — copy immediately.</p>
-        <div class="table-wrap">
-          <table>
-            <thead><tr>
-              <th>ID</th><th>Name</th><th>Key</th><th>Status</th>
-              <th>Limits</th><th>Usage</th><th>Last used</th><th>Actions</th>
-            </tr></thead>
-            <tbody id="keysTableBody">
-              <tr><td colspan="8" class="muted">Loading API keys…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  </section>
-</div>
+<!-- Toast -->
+<div id="toast" role="status" aria-live="polite"></div>
 
 <!-- Modal -->
 <div id="modalOv" class="modal-ov hidden" role="dialog" aria-modal="true">
   <div class="modal">
     <h3 id="mTitle">Confirm</h3>
-    <p class="mdesc" id="mMsg"></p>
+    <p class="desc" id="mMsg"></p>
     <div class="modal-fields" id="mFields"></div>
     <div class="modal-acts">
-      <button id="mCancel" class="sec" type="button">Cancel</button>
-      <button id="mConfirm" type="button">Confirm</button>
+      <button id="mCancel" class="ghost" type="button">Cancel</button>
+      <button id="mConfirm" class="primary" type="button">Confirm</button>
     </div>
   </div>
 </div>
 
+<!-- Full Page Login View -->
+<div id="loginView">
+  <div class="card" style="width: 100%; max-width: 400px; border: none; background: transparent;">
+    <div style="text-align: center; margin-bottom: 32px;">
+      <h1 style="font-size: 24px; margin: 0 0 8px 0; font-weight: 600;">GrokPi Access</h1>
+      <p style="color: var(--text-secondary); margin: 0;">Admin Console Authentication</p>
+    </div>
+    
+    <div id="flashLogin" class="hidden" role="alert"></div>
+
+    <form id="loginForm">
+      <label>
+        App Secret Key
+        <input id="appKeyInput" type="password" placeholder="Enter app_key from config" autocomplete="current-password" required>
+      </label>
+      <button type="submit" class="primary" style="width: 100%; margin-top: 8px;">Sign In</button>
+    </form>
+  </div>
+</div>
+
+<!-- Main App View -->
+<div id="appView" class="app-layout hidden">
+  
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"></polygon><line x1="12" y1="22" x2="12" y2="15.5"></line><polyline points="22 8.5 12 15.5 2 8.5"></polyline><polyline points="2 15.5 12 8.5 22 15.5"></polyline><line x1="12" y1="2" x2="12" y2="8.5"></line></svg>
+      GrokPi
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#overview" class="nav-item active" data-view="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+        Overview
+      </a>
+      <a href="#tokens" class="nav-item" data-view="tokens">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        SSO Tokens
+      </a>
+      <a href="#apikeys" class="nav-item" data-view="apikeys">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        API Keys
+      </a>
+      <a href="#usage" class="nav-item" data-view="usage">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Usage Logs
+      </a>
+      <a href="#config" class="nav-item" data-view="config">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Configuration
+      </a>
+      <a href="#cache" class="nav-item" data-view="cache">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        Cache Manager
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="ghost" id="logoutButton" style="justify-content: flex-start;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign out
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Area -->
+  <main class="main-content">
+    <div class="page-container" id="pageContainer">
+      <div id="flashApp" class="hidden" role="alert"></div>
+
+      <!-- VIEW: OVERVIEW -->
+      <div id="view_overview" class="view-section">
+        <div class="page-header">
+          <div>
+            <h1>Dashboard</h1>
+            <p>System status and overall metrics.</p>
+          </div>
+          <button class="ghost" onclick="refreshOverview()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
+        </div>
+        
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total SSO Tokens</div>
+            <div class="stat-value" id="st_tok_tot">—</div>
+            <div class="stat-desc" id="st_tok_act">Loading...</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Client API Keys</div>
+            <div class="stat-value" id="st_key_tot">—</div>
+            <div class="stat-desc" id="st_key_act">Loading...</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Global Chat Quota</div>
+            <div class="stat-value" id="st_quota">—</div>
+            <div class="stat-desc" id="st_quota_usage">Loading...</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">App Key Source</div>
+            <div class="stat-value" id="st_cfg_src" style="font-size: 20px; line-height: 1.6;">—</div>
+            <div class="stat-desc" id="st_cfg_db">Loading...</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Recent Usage Logs</h2>
+          <p class="desc">The last 5 requests routed through this proxy.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>User / Key</th><th>Model</th><th>Input</th><th>Output</th><th>Elapsed</th></tr></thead>
+              <tbody id="overviewRecentLogs"><tr><td colspan="6" class="muted">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW: TOKENS -->
+      <div id="view_tokens" class="view-section hidden">
+        <div class="page-header">
+          <div>
+            <h1>SSO Tokens</h1>
+            <p>Manage upstream Grok/xAI tokens for routing.</p>
+          </div>
+          <button class="ghost" onclick="refreshTokens()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
+        </div>
+
+        <div class="card">
+          <h2>Import Tokens</h2>
+          <p class="desc">Paste SSO tokens (comma or newline separated). System will automatically detect tier and quota if left empty.</p>
+          <form id="tokenImportForm">
+            <label>Tokens <textarea id="tokenImportInput" placeholder="eyJ0..."></textarea></label>
+            <div class="form-grid">
+              <label>Default Pool 
+                <select id="tokenImportPool"><option value="">Auto-detect</option><option value="ssoBasic">Basic</option><option value="ssoSuper">Super</option></select>
+              </label>
+              <label>Initial Quota <input id="tokenImportQuota" type="number" placeholder="Auto-fetch"></label>
+              <label>Remark <input id="tokenImportRemark" type="text" placeholder="Optional context"></label>
+            </div>
+            <button type="submit" class="primary" id="tokenImportBtn">Import Tokens</button>
+          </form>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Token</th><th>Tier / Pool</th><th>Status</th><th>Quota</th><th>Last Used</th><th>Remark</th><th>Actions</th></tr></thead>
+            <tbody id="tokensTableBody"><tr><td colspan="8" class="muted">Loading tokens...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- VIEW: API KEYS -->
+      <div id="view_apikeys" class="view-section hidden">
+        <div class="page-header">
+          <div>
+            <h1>API Keys</h1>
+            <p>Client keys for authenticating requests to this proxy.</p>
+          </div>
+          <button class="ghost" onclick="refreshKeys()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
+        </div>
+
+        <div class="card">
+          <h2>Create New Key</h2>
+          <p class="desc">Keys follow the standard <code>sk-...</code> format.</p>
+          <form id="keyCreateForm" class="form-grid">
+            <label>Name / Identifier <input id="keyNameInput" type="text" placeholder="e.g. Chat App UI" required></label>
+            <label>Rate Limit (req/min) <input id="keyRateInput" type="number" value="60"></label>
+            <label>Daily Limit (req/day) <input id="keyDailyInput" type="number" value="2000"></label>
+            <div style="display:flex; align-items:flex-end;"><button type="submit" class="primary" id="keyCreateBtn">Generate Key</button></div>
+          </form>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Key (Masked)</th><th>Status</th><th>Limits</th><th>Usage</th><th>Last Used</th><th>Actions</th></tr></thead>
+            <tbody id="keysTableBody"><tr><td colspan="8" class="muted">Loading API keys...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- VIEW: USAGE -->
+      <div id="view_usage" class="view-section hidden">
+        <div class="page-header">
+          <div>
+            <h1>Usage Logs</h1>
+            <p>Request history and error tracking.</p>
+          </div>
+          <div class="flex items-center gap-4">
+            <select id="usagePeriod" onchange="refreshUsage()" style="width: auto; padding: 6px 12px;">
+              <option value="day">Last 24 Hours</option>
+              <option value="week">Last 7 Days</option>
+              <option value="month">Last 30 Days</option>
+            </select>
+            <button class="ghost" onclick="refreshUsage()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Requests</div>
+            <div class="stat-value" id="usg_req">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Tokens</div>
+            <div class="stat-value" id="usg_tok">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Error Rate</div>
+            <div class="stat-value" id="usg_err">—</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Detailed Logs</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>User / App</th><th>Endpoint</th><th>Model</th><th>Input/Output Tok.</th><th>Elapsed</th><th>App Status</th></tr></thead>
+              <tbody id="usageLogsBody"><tr><td colspan="7" class="muted">Loading logs...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW: CONFIG -->
+      <div id="view_config" class="view-section hidden">
+        <div class="page-header">
+          <div>
+            <h1>Configuration</h1>
+            <p>Runtime proxy settings. Saving here persists to the database.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <form id="configForm">
+            <div class="form-grid">
+              <label>App Key (Admin Password) <input id="cfg_app_key" type="password" placeholder="Leave blank to keep unchanged"></label>
+              <label>LogLevel <select id="cfg_loglevel"><option value="debug">debug</option><option value="info">info</option><option value="warn">warn</option><option value="error">error</option></select></label>
+            </div>
+            <h3 style="margin: 20px 0 12px; font-size: 14px; font-weight: 500;">Upstream & Proxy</h3>
+            <div class="form-grid">
+              <label>Cloudflare Timeout (s) <input id="cfg_cf_timeout" type="number"></label>
+              <label>Auth Max Retries <input id="cfg_auth_retry" type="number"></label>
+            </div>
+            <h3 style="margin: 20px 0 12px; font-size: 14px; font-weight: 500;">Telegram Alerts</h3>
+            <div class="form-grid">
+              <label>Bot Token <input id="cfg_tg_token" type="password"></label>
+              <label>Chat ID <input id="cfg_tg_chat" type="text"></label>
+            </div>
+            <div style="margin-top: 24px;">
+              <button type="submit" class="primary" id="configSaveBtn">Save Configuration</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- VIEW: CACHE -->
+      <div id="view_cache" class="view-section hidden">
+        <div class="page-header">
+          <div>
+            <h1>Cache Manager</h1>
+            <p>Manage stored media, images, and short-term caches.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="ghost danger-text" onclick="doClearCache()">Clear Entire Cache</button>
+            <button class="ghost" onclick="refreshCache()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
+          </div>
+        </div>
+
+        <div class="stats-grid" id="cacheStatsGrid">
+          <!-- Populated dynamically -->
+          <div class="stat-card"><div class="stat-label">Cache Size</div><div class="stat-value">—</div></div>
+        </div>
+
+        <div class="card">
+          <div style="margin-bottom: 20px;">
+            <h2>Stored Files</h2>
+            <p class="desc" style="margin:0">Currently cached resources.</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Filename</th><th>Size</th><th>Type</th><th>Age</th><th>Actions</th></tr></thead>
+              <tbody id="cacheFilesBody"><tr><td colspan="5" class="muted">Loading files...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
 <script>
 /* ─── State ─── */
-const S = { tokens: [], keys: [] };
+const S = { tokens: [], keys: [], cache: [] };
 
-/* ─── Refs ─── */
-const flashEl = document.getElementById('flash');
-const toastEl = document.getElementById('toast');
-const heroStatusEl = document.getElementById('heroStatus');
-const loginSection = document.getElementById('loginSection');
-const appSection = document.getElementById('appSection');
-const tokensBody = document.getElementById('tokensTableBody');
-const keysBody = document.getElementById('keysTableBody');
-const logoutButton = document.getElementById('logoutButton');
-const modalOv = document.getElementById('modalOv');
-
-/* ─── Escape ─── */
+/* ─── Formatters & Escape ─── */
 function esc(v) {
   return String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 }
@@ -373,48 +849,18 @@ function fmtTime(v) {
   const d = new Date(v);
   return isNaN(d) ? '—' : d.toLocaleString();
 }
-
-/* ─── Toast (auto-dismiss 3.5s) ─── */
-let _toastTimer;
-function toast(msg, kind = 'ok') {
-  clearTimeout(_toastTimer);
-  toastEl.textContent = msg;
-  toastEl.className = 'show ' + kind;
-  _toastTimer = setTimeout(() => { toastEl.className = ''; }, 3500);
+function fmtBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'], i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
-
-/* ─── Flash (persistent, for errors + key reveal) ─── */
-function showFlash(msg, kind, rawVal = '') {
-  if (kind === 'success') { toast(msg, 'ok'); return; }
-  flashEl.className = kind;
-  if (rawVal) {
-    flashEl.innerHTML = `
-      <strong>${esc(msg)}</strong>
-      <div class="fkey" id="fkeyVal">${esc(rawVal)}</div>
-      <div class="fcopy">
-        <button class="sec" type="button" id="flashCopyBtn">${iCopy()} Copy key</button>
-        <span class="fnote">This value won't be shown again</span>
-      </div>`;
-    document.getElementById('flashCopyBtn').onclick = () => clip(rawVal, 'Key copied!');
-  } else {
-    flashEl.innerHTML = `<strong>${esc(msg)}</strong>`;
-  }
-  flashEl.classList.remove('hidden');
+function fmtNum(n) {
+  return n ? new Intl.NumberFormat().format(n) : '0';
 }
-function clearFlash() { flashEl.className = 'hidden'; }
-
-/* ─── Clipboard ─── */
-async function clip(text, msg = 'Copied!') {
-  try { await navigator.clipboard.writeText(text); toast(msg, 'ok'); }
-  catch { toast('Copy failed — select and copy manually', 'err'); }
-}
-
-/* ─── SVG icons ─── */
-function iCopy() { return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`; }
 function iMore() { return `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`; }
-function iSync() { return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`; }
+function iCopy() { return `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`; }
 
-/* ─── Request ─── */
+/* ─── Core Request ─── */
 async function req(path, opts = {}) {
   const r = await fetch(path, { credentials: 'same-origin', headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) }, ...opts });
   const ct = r.headers.get('content-type') || '';
@@ -423,7 +869,41 @@ async function req(path, opts = {}) {
   return body;
 }
 
+/* ─── Toast & Flash ─── */
+const toastEl = document.getElementById('toast');
+let _toastTimer;
+function toast(msg, kind = 'ok') {
+  clearTimeout(_toastTimer);
+  toastEl.innerHTML = kind === 'ok' 
+    ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>` 
+    : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-red)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+  toastEl.innerHTML += ` <span>${esc(msg)}</span>`;
+  toastEl.className = 'show ' + kind;
+  _toastTimer = setTimeout(() => { toastEl.className = ''; }, 3500);
+}
+
+function flash(msg, kind = 'error', rawVal = '', target = 'flashApp') {
+  const f = document.getElementById(target);
+  f.className = kind;
+  if (rawVal) {
+    f.innerHTML = `<strong>${esc(msg)}</strong><div class="fkey">${esc(rawVal)}</div><button class="ghost" onclick="clip('${esc(rawVal)}')">${iCopy()} Copy Key</button>`;
+  } else {
+    f.innerHTML = `<strong>${esc(msg)}</strong>`;
+  }
+  f.classList.remove('hidden');
+}
+function clearFlash() {
+  document.getElementById('flashApp').classList.add('hidden');
+  document.getElementById('flashLogin').classList.add('hidden');
+}
+
+async function clip(text) {
+  try { await navigator.clipboard.writeText(text); toast('Copied to clipboard'); }
+  catch { toast('Copy failed', 'err'); }
+}
+
 /* ─── Modal ─── */
+const modalOv = document.getElementById('modalOv');
 let _mCb = null;
 function openModal({ title, msg = '', fields = [], confirmTxt = 'Confirm', confirmCls = '', onConfirm }) {
   document.getElementById('mTitle').textContent = title;
@@ -433,18 +913,17 @@ function openModal({ title, msg = '', fields = [], confirmTxt = 'Confirm', confi
   for (const f of fields) {
     const lbl = document.createElement('label');
     lbl.textContent = f.label;
-    const el = f.type === 'textarea'
+    const el = f.type === 'textarea' 
       ? Object.assign(document.createElement('textarea'), { rows: 3 })
       : Object.assign(document.createElement('input'), { type: f.type || 'text' });
     el.id = 'mf_' + f.key;
     el.value = f.value ?? '';
     if (f.placeholder) el.placeholder = f.placeholder;
-    if (f.maxlength) el.maxLength = f.maxlength;
     lbl.appendChild(el); fieldsEl.appendChild(lbl);
   }
   const btn = document.getElementById('mConfirm');
   btn.textContent = confirmTxt;
-  btn.className = confirmCls || '';
+  btn.className = 'primary ' + confirmCls;
   _mCb = onConfirm;
   modalOv.classList.remove('hidden');
   requestAnimationFrame(() => modalOv.classList.add('show'));
@@ -457,16 +936,15 @@ function closeModal() {
 }
 document.getElementById('mCancel').addEventListener('click', closeModal);
 document.getElementById('mConfirm').addEventListener('click', () => {
-  if (!_mCb) { closeModal(); return; }
+  if (!_mCb) return closeModal();
   const vals = {};
-  document.getElementById('mFields').querySelectorAll('input,textarea').forEach(el => { vals[el.id.replace('mf_', '')] = el.value; });
+  document.getElementById('mFields').querySelectorAll('input,textarea').forEach(el => vals[el.id.replace('mf_', '')] = el.value);
   _mCb(vals);
   closeModal();
 });
 modalOv.addEventListener('click', e => { if (e.target === modalOv) closeModal(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-/* ─── Dropdown ─── */
+/* ─── Dropdowns ─── */
 let _activeDd = null;
 function toggleDd(id) {
   const el = document.getElementById(id);
@@ -478,326 +956,437 @@ document.addEventListener('click', e => {
   if (_activeDd && !e.target.closest('.dropdown')) { _activeDd.classList.add('hidden'); _activeDd = null; }
 });
 
-/* ─── Badge helpers ─── */
+/* ─── View / Routing ─── */
+const views = ['overview', 'tokens', 'apikeys', 'usage', 'config', 'cache'];
+async function switchView(target) {
+  if (!views.includes(target)) target = 'overview';
+  
+  // Update sidebar UI
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.nav-item[data-view="${target}"]`)?.classList.add('active');
+
+  // Smooth fade
+  const pc = document.getElementById('pageContainer');
+  pc.classList.add('fade-out');
+  
+  setTimeout(async () => {
+    views.forEach(v => document.getElementById('view_' + v).classList.add('hidden'));
+    document.getElementById('view_' + target).classList.remove('hidden');
+    clearFlash();
+    
+    try {
+      if (target === 'overview') await refreshOverview();
+      else if (target === 'tokens') await refreshTokens();
+      else if (target === 'apikeys') await refreshKeys();
+      else if (target === 'usage') await refreshUsage();
+      else if (target === 'config') await refreshConfig();
+      else if (target === 'cache') await refreshCache();
+    } catch (err) {
+      toast('Failed loading data: ' + err.message, 'err');
+    }
+    
+    pc.classList.remove('fade-out');
+  }, 200);
+}
+
+window.addEventListener('hashchange', () => {
+  const hash = window.location.hash.substring(1);
+  switchView(hash || 'overview');
+});
+
+/* ─── Helpers Components ─── */
 function bc(v) { return 'badge ' + String(v || '').replace(/[^a-zA-Z0-9_-]/g, ''); }
-
-function tierCell(pool, priority) {
-  const pb = `<span class="${bc(pool)}">${esc(pool || '—')}</span>`;
-  const prb = priority >= 10 ? `<span class="badge high">⭐ High</span>` : `<span class="badge norm">Normal</span>`;
-  return `<div style="display:flex;flex-direction:column;gap:4px">${pb}${prb}</div>`;
-}
-
-function quotaCell(cur, tot) {
-  if (!tot) return `<div class="qwrap"><div class="qtxt">${cur}/—</div></div>`;
+function qBar(cur, tot) {
+  if (!tot) return `<div class="q-bar-wrapper"><div class="q-bar-text"><span>${cur}</span><span>—</span></div></div>`;
   const pct = Math.max(0, Math.min(100, Math.round(cur / tot * 100)));
-  const cls = pct >= 70 ? 'hi' : pct >= 30 ? 'mid' : 'lo';
-  return `<div class="qwrap"><div class="qtxt">${cur}/${tot}</div><div class="qbar"><div class="qfill ${cls}" style="width:${pct}%"></div></div></div>`;
+  const cls = pct >= 80 ? 'good' : pct >= 40 ? 'warn' : 'danger';
+  return `<div class="q-bar-wrapper"><div class="q-bar-text"><span>${fmtNum(cur)}</span><span>${fmtNum(tot)}</span></div><div class="q-bar-bg"><div class="q-bar-fill ${cls}" style="width:${pct}%"></div></div></div>`;
 }
 
-/* ─── Render tokens ─── */
-function renderTokens() {
-  if (!S.tokens.length) { tokensBody.innerHTML = '<tr><td colspan="8" class="muted">No tokens found.</td></tr>'; return; }
-  tokensBody.innerHTML = S.tokens.map(t => {
-    const did = 'dd-t-' + t.id;
-    const active = t.status === 'active';
-    return `<tr>
-      <td>${t.id}</td>
-      <td><code>${esc(t.token)}</code></td>
-      <td>${tierCell(t.pool, t.priority)}</td>
-      <td><span class="${bc(t.status)}">${esc(t.status || '—')}</span></td>
-      <td>${quotaCell(t.chat_quota, t.total_chat_quota)}</td>
-      <td style="font-size:.8rem;color:var(--muted)">${esc(fmtTime(t.last_used))}</td>
-      <td style="font-size:.8rem;color:var(--muted)">${esc(t.remark || '—')}</td>
-      <td><div class="row-acts">
-        <button class="ghost" type="button" onclick="doRefreshToken(${t.id})" title="Sync quota">${iSync()} Refresh</button>
-        <button class="ghost ${active ? 'dng' : 'acc'}" type="button" onclick="doToggleToken(${t.id},'${active ? 'disabled' : 'active'}')">${active ? 'Disable' : 'Enable'}</button>
-        <div class="dropdown">
-          <button class="ghost" type="button" onclick="toggleDd('${did}')" title="More">${iMore()}</button>
-          <div class="dd-menu hidden" id="${did}">
-            <button type="button" onclick="doReplaceToken(${t.id});toggleDd('${did}')">Replace token</button>
-            <button type="button" onclick="doEditRemark(${t.id});toggleDd('${did}')">Edit remark</button>
-            <div class="dd-div"></div>
-            <button class="dng" type="button" onclick="doDeleteToken(${t.id});toggleDd('${did}')">Delete</button>
-          </div>
-        </div>
-      </div></td>
-    </tr>`;
-  }).join('');
-}
-
-/* ─── Render API keys ─── */
-function renderKeys() {
-  if (!S.keys.length) { keysBody.innerHTML = '<tr><td colspan="8" class="muted">No API keys found.</td></tr>'; return; }
-  keysBody.innerHTML = S.keys.map(k => {
-    const did = 'dd-k-' + k.id;
-    const active = k.status === 'active';
-    const safeKey = esc(k.key);
-    return `<tr>
-      <td>${k.id}</td>
-      <td style="font-weight:500">${esc(k.name || '—')}</td>
-      <td><div style="display:flex;align-items:center;gap:7px;min-width:0">
-        <code style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${safeKey}</code>
-        <button class="ghost" type="button" onclick="clip('${safeKey}','Masked key copied')" title="Copy key">${iCopy()}</button>
-      </div></td>
-      <td><span class="${bc(k.status)}">${esc(k.status || '—')}</span></td>
-      <td style="font-size:.8rem;color:var(--muted)">${k.rate_limit}/min · ${k.daily_limit}/day</td>
-      <td style="font-size:.8rem;color:var(--muted)">${k.daily_used} today · ${k.total_used} total</td>
-      <td style="font-size:.8rem;color:var(--muted)">${esc(fmtTime(k.last_used_at))}</td>
-      <td><div class="row-acts">
-        <button class="ghost ${active ? 'dng' : 'acc'}" type="button" onclick="doToggleKey(${k.id},'${active ? 'inactive' : 'active'}')">${active ? 'Disable' : 'Enable'}</button>
-        <div class="dropdown">
-          <button class="ghost" type="button" onclick="toggleDd('${did}')" title="More">${iMore()}</button>
-          <div class="dd-menu hidden" id="${did}">
-            <button type="button" onclick="doEditKey(${k.id});toggleDd('${did}')">Edit</button>
-            <button type="button" onclick="doRegenKey(${k.id});toggleDd('${did}')">Regenerate</button>
-            <div class="dd-div"></div>
-            <button class="dng" type="button" onclick="doDeleteKey(${k.id});toggleDd('${did}')">Delete</button>
-          </div>
-        </div>
-      </div></td>
-    </tr>`;
-  }).join('');
-}
-
-/* ─── Data loaders ─── */
-async function loadSummary() {
+/* ─── LOADERS ─── */
+async function refreshOverview() {
   const s = await req('/admin/system/status');
-  document.getElementById('statTokens').textContent = s.tokens.total;
-  document.getElementById('statTokensDetail').textContent = s.tokens.active + ' active';
-  document.getElementById('statKeys').textContent = s.api_keys.total;
-  document.getElementById('statKeysDetail').textContent = s.api_keys.active + ' active';
-  document.getElementById('statVersion').textContent = s.version || 'unknown';
+  document.getElementById('st_tok_tot').textContent = fmtNum(s.tokens.total);
+  document.getElementById('st_tok_act').textContent = s.tokens.active + ' active tokens';
+  document.getElementById('st_key_tot').textContent = fmtNum(s.api_keys.total);
+  document.getElementById('st_key_act').textContent = s.api_keys.active + ' active keys';
+  
   const dbc = s.config?.db_override_count ?? 0;
-  document.getElementById('statConfig').innerHTML =
-    'Key source: ' + (s.config?.app_key_source || 'unknown') +
-    (dbc > 0 ? ` &nbsp;<span class="badge cooling" style="font-size:.7rem">${dbc} DB overrides</span>` : '');
-}
-async function loadTokens() { const p = await req('/admin/tokens?page_size=100'); S.tokens = p.data || []; renderTokens(); }
-async function loadKeys() { const p = await req('/admin/apikeys?page_size=100'); S.keys = p.data || []; renderKeys(); }
-async function refreshAll() { clearFlash(); await Promise.all([loadSummary(), loadTokens(), loadKeys()]); heroStatusEl.textContent = 'Signed in'; }
+  document.getElementById('st_cfg_src').innerHTML = `<span class="badge ${s.config?.app_key_source === 'DB' ? 'active' : 'ssoBasic'}">${esc(s.config?.app_key_source)}</span>`;
+  document.getElementById('st_cfg_db').textContent = dbc + ' DB overrides active';
 
-/* ─── Session ─── */
-async function checkSession() {
   try {
-    await req('/admin/verify');
-    loginSection.classList.add('hidden');
-    appSection.classList.remove('hidden');
-    logoutButton.classList.remove('hidden');
-    await refreshAll();
+    const q = await req('/admin/stats/quota');
+    document.getElementById('st_quota').textContent = fmtNum(q.used_quota) + ' / ' + fmtNum(q.total_quota);
+    document.getElementById('st_quota_usage').textContent = 'Global aggregate (' + (q.total_quota ? Math.round(q.used_quota/q.total_quota*100) : 0) + '%)';
   } catch {
-    heroStatusEl.textContent = 'Admin sign-in required';
-    loginSection.classList.remove('hidden');
-    appSection.classList.add('hidden');
-    logoutButton.classList.add('hidden');
+    document.getElementById('st_quota').textContent = 'ERROR';
+  }
+
+  // Load recent usage
+  try {
+    const u = await req('/admin/usage/logs?page_size=5');
+    const tbody = document.getElementById('overviewRecentLogs');
+    if (!u.data || u.data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="muted">No recent requests</td></tr>';
+      return;
+    }
+    tbody.innerHTML = u.data.map(l => 
+      `<tr>
+        <td class="text-xs muted">${esc(fmtTime(l.created_at))}</td>
+        <td>${esc(l.app_key_name || '—')}</td>
+        <td><code>${esc(l.model_requested)}</code></td>
+        <td class="text-xs"><span class="badge">${l.input_tokens || 0}</span> / <span class="badge">${l.output_tokens || 0}</span></td>
+        <td class="text-xs muted">${l.duration_ms}ms</td>
+      </tr>`
+    ).join('');
+  } catch (e) {
+    document.getElementById('overviewRecentLogs').innerHTML = '<tr><td colspan="6" class="muted text-danger">Failed to load logs</td></tr>';
   }
 }
 
-/* ─── Token actions ─── */
+async function refreshTokens() {
+  const res = await req('/admin/tokens?page_size=200');
+  S.tokens = res.data || [];
+  const tbody = document.getElementById('tokensTableBody');
+  if (!S.tokens.length) { tbody.innerHTML = '<tr><td colspan="8" class="muted">No tokens found.</td></tr>'; return; }
+  
+  tbody.innerHTML = S.tokens.map(t => {
+    const did = 'dd-t-' + t.id;
+    const active = t.status === 'active';
+    return `<tr>
+      <td class="text-xs muted">#${t.id}</td>
+      <td><code>${esc(t.token.substring(0,8))}...${esc(t.token.slice(-4))}</code></td>
+      <td><span class="${bc(t.pool)}">${esc(t.pool || '—')}</span></td>
+      <td><span class="${bc(t.status)}">${esc(t.status)}</span></td>
+      <td>${qBar(t.chat_quota, t.total_chat_quota)}</td>
+      <td class="text-xs muted">${esc(fmtTime(t.last_used))}</td>
+      <td class="text-xs muted">${esc(t.remark || '—')}</td>
+      <td>
+        <div class="row-actions">
+          <button class="ghost" onclick="doAction('tokens', ${t.id}, 'refresh')">Sync</button>
+          <div class="dropdown">
+            <button class="ghost" onclick="toggleDd('${did}')">${iMore()}</button>
+            <div class="dropdown-menu hidden" id="${did}">
+              <button onclick="doToggleToken(${t.id}, '${active ? 'disabled' : 'active'}'); toggleDd('${did}')">${active ? 'Disable' : 'Enable'}</button>
+              <button onclick="doReplaceToken(${t.id}); toggleDd('${did}')">Replace Token</button>
+              <div class="dd-divider"></div>
+              <button class="danger" onclick="doDeleteToken(${t.id}); toggleDd('${did}')">Delete</button>
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function refreshKeys() {
+  const res = await req('/admin/apikeys?page_size=100');
+  S.keys = res.data || [];
+  const tbody = document.getElementById('keysTableBody');
+  if (!S.keys.length) { tbody.innerHTML = '<tr><td colspan="8" class="muted">No API keys found.</td></tr>'; return; }
+
+  tbody.innerHTML = S.keys.map(k => {
+    const did = 'dd-k-' + k.id;
+    const active = k.status === 'active';
+    return `<tr>
+      <td class="text-xs muted">#${k.id}</td>
+      <td style="font-weight:500;">${esc(k.name)}</td>
+      <td>
+        <div class="flex items-center gap-2">
+          <code style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${esc(k.key)}</code>
+          <button class="ghost" style="padding: 4px;" onclick="clip('${esc(k.key)}')">${iCopy()}</button>
+        </div>
+      </td>
+      <td><span class="${bc(k.status)}">${esc(k.status)}</span></td>
+      <td class="text-xs" style="color:var(--text-secondary)">${k.rate_limit}/m · ${k.daily_limit}/d</td>
+      <td class="text-xs"><span class="badge ${k.daily_used > k.daily_limit*0.8 ? 'warning' : ''}">${k.daily_used} today</span></td>
+      <td class="text-xs muted">${esc(fmtTime(k.last_used_at))}</td>
+      <td>
+        <div class="row-actions">
+          <button class="ghost" onclick="doToggleKey(${k.id}, '${active ? 'inactive' : 'active'}')">${active ? 'Disable' : 'Enable'}</button>
+          <div class="dropdown">
+            <button class="ghost" onclick="toggleDd('${did}')">${iMore()}</button>
+            <div class="dropdown-menu hidden" id="${did}">
+              <button onclick="doRegenKey(${k.id}); toggleDd('${did}')">Regenerate Key</button>
+              <div class="dd-divider"></div>
+              <button class="danger" onclick="doDeleteKey(${k.id}); toggleDd('${did}')">Delete</button>
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function refreshUsage() {
+  const p = document.getElementById('usagePeriod').value || '24h';
+  
+  // Total stats map to the system/usage endpoint
+  try {
+    const s = await req('/admin/system/usage?period=' + p);
+    document.getElementById('usg_req').textContent = fmtNum(s.requests);
+    document.getElementById('usg_tok').textContent = fmtNum((s.tokens_input || 0) + (s.tokens_output || 0));
+    const errRate = s.requests > 0 ? ((s.errors / s.requests) * 100).toFixed(1) : '0';
+    document.getElementById('usg_err').textContent = errRate + '%';
+  } catch {
+    document.getElementById('usg_req').textContent = 'ERR';
+  }
+
+  // Reload logs table
+  try {
+    const res = await req('/admin/usage/logs?page_size=50');
+    const tbody = document.getElementById('usageLogsBody');
+    if (!res.data || !res.data.length) { tbody.innerHTML = '<tr><td colspan="7" class="muted">No logs found.</td></tr>'; return; }
+    
+    tbody.innerHTML = res.data.map(l => 
+      `<tr>
+        <td class="text-xs muted">${esc(fmtTime(l.created_at))}</td>
+        <td>${esc(l.app_key_name || 'Admin UI')}</td>
+        <td><code>${esc(l.model_requested || l.endpoint)}</code></td>
+        <td class="text-xs muted">${esc(l.mapped_model || '—')}</td>
+        <td class="text-xs"><span class="badge" title="Input">${l.input_tokens || 0}</span> / <span class="badge" title="Output">${l.output_tokens || 0}</span></td>
+        <td class="text-xs muted">${l.duration_ms}ms</td>
+        <td><span class="${l.error_message ? 'badge error' : 'badge success'}">${l.error_message ? 'ERR' : 'OK'}</span></td>
+      </tr>`
+    ).join('');
+  } catch {}
+}
+
+async function refreshConfig() {
+  const c = await req('/admin/config');
+  document.getElementById('cfg_loglevel').value = c.log_level || 'info';
+  document.getElementById('cfg_cf_timeout').value = c.proxy?.cloudflare_timeout || 60;
+  document.getElementById('cfg_auth_retry').value = c.proxy?.max_auth_retries || 3;
+  document.getElementById('cfg_tg_token').value = c.proxy?.telegram_bot_token || '';
+  document.getElementById('cfg_tg_chat').value = c.proxy?.telegram_chat_id || '';
+  document.getElementById('cfg_app_key').value = ''; // Don't show password
+}
+
+async function refreshCache() {
+  try {
+    const s = await req('/admin/cache/stats');
+    const totCount = (s.image?.count || 0) + (s.video?.count || 0);
+    const totSizeMB = (s.image?.size_mb || 0) + (s.video?.size_mb || 0);
+    
+    const cg = document.getElementById('cacheStatsGrid');
+    cg.innerHTML = `
+      <div class="stat-card"><div class="stat-label">Cache Storage</div><div class="stat-value">${fmtBytes(totSizeMB * 1048576)}</div><div class="stat-desc">${totCount} files stored</div></div>
+      <div class="stat-card"><div class="stat-label">Cache Limit</div><div class="stat-value">Dynamic</div><div class="stat-desc">Managed by storage limits</div></div>
+    `;
+    
+    const [resImg, resVid] = await Promise.all([
+      req('/admin/cache/files?type=image&page_size=50').catch(() => ({ items: [] })),
+      req('/admin/cache/files?type=video&page_size=50').catch(() => ({ items: [] }))
+    ]);
+    const files = [...(resImg.items || []), ...(resVid.items || [])].sort((a,b) => b.mod_time_ms - a.mod_time_ms);
+    const tbody = document.getElementById('cacheFilesBody');
+    if (!files.length) { tbody.innerHTML = '<tr><td colspan="5" class="muted">Cache is empty.</td></tr>'; return; }
+    
+    tbody.innerHTML = files.map(f => {
+      const isVid = f.name.endsWith('.mp4');
+      const type = isVid ? 'video' : 'image';
+      return `
+      <tr>
+        <td><code>${esc(f.name)}</code></td>
+        <td class="text-xs muted">${fmtBytes(f.size_bytes)}</td>
+        <td class="text-xs"><span class="badge ${isVid?'ssoBasic':'ssoSuper'}">${esc(type)}</span></td>
+        <td class="text-xs muted">${esc(fmtTime(f.mod_time_ms))}</td>
+        <td><button class="ghost danger-text" onclick="doDelCacheFile('${type}', '${esc(f.name)}')">Remove</button></td>
+      </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    document.getElementById('cacheFilesBody').innerHTML = `<tr><td colspan="5" class="muted text-danger">Failed: ${esc(err.message)}</td></tr>`;
+  }
+}
+
+
+/* ─── ACTION HANDLERS ─── */
+async function doAction(resource, id, action, method='POST', body=null) {
+  try {
+    await req(`/admin/${resource}/${id}/${action}`, { method, body: body ? JSON.stringify(body) : null });
+    toast('Action successful');
+    if (resource === 'tokens') refreshTokens();
+    if (resource === 'apikeys') refreshKeys();
+  } catch(e) { flash(e.message, 'error'); }
+}
+
 function doReplaceToken(id) {
   openModal({
     title: 'Replace Token #' + id,
-    msg: 'Paste the new SSO token. Pool and quota will be re-detected from upstream.',
-    fields: [{ key: 'token', label: 'New token', type: 'textarea', placeholder: 'eyJ0…' }],
-    confirmTxt: 'Replace & Reclassify',
-    onConfirm: async (v) => {
-      const tok = v.token?.trim();
-      if (!tok) return;
-      try {
-        await req('/admin/tokens/' + id + '/replace', { method: 'POST', body: JSON.stringify({ token: tok, reclassify: true, preserve_remark: true }) });
-        toast('Token replaced and reclassified.', 'ok');
-        await refreshAll();
-      } catch (e) { showFlash(e.message, 'error'); }
-    }
-  });
-}
-
-function doEditRemark(id) {
-  const cur = S.tokens.find(t => t.id === id);
-  openModal({
-    title: 'Edit Remark',
-    msg: 'Update the label for this token.',
-    fields: [{ key: 'remark', label: 'Remark', placeholder: 'e.g. personal account', value: cur?.remark || '' }],
-    confirmTxt: 'Save',
+    msg: 'Paste the new SSO token. We will re-check quota directly.',
+    fields: [{ key: 'token', label: 'New Token string', type: 'textarea' }],
     onConfirm: async (v) => {
       try {
-        await req('/admin/tokens/' + id, { method: 'PUT', body: JSON.stringify({ remark: v.remark }) });
-        toast('Remark updated.', 'ok');
-        await loadTokens();
-      } catch (e) { showFlash(e.message, 'error'); }
+        await req(`/admin/tokens/${id}/replace`, { method: 'POST', body: JSON.stringify({ token: (v.token||'').trim(), reclassify: true }) });
+        toast('Token replaced'); refreshTokens();
+      } catch(e) { flash(e.message, 'error'); }
     }
   });
-}
-
-async function doRefreshToken(id) {
-  try {
-    await req('/admin/tokens/' + id + '/refresh', { method: 'POST' });
-    toast('Token quota refreshed.', 'ok');
-    await refreshAll();
-  } catch (e) { showFlash(e.message, 'error'); }
-}
-
-async function doToggleToken(id, status) {
-  try {
-    await req('/admin/tokens/' + id, { method: 'PUT', body: JSON.stringify({ status }) });
-    toast('Token ' + (status === 'active' ? 'enabled.' : 'disabled.'), 'ok');
-    await refreshAll();
-  } catch (e) { showFlash(e.message, 'error'); }
 }
 
 function doDeleteToken(id) {
   openModal({
-    title: 'Delete Token #' + id,
-    msg: 'This will permanently remove the token from the pool. This cannot be undone.',
-    confirmTxt: 'Delete', confirmCls: 'danger',
+    title: 'Delete Token', msg: 'Are you sure you want to permanently delete token #' + id + '?', confirmTxt: 'Delete', confirmCls: 'danger',
     onConfirm: async () => {
-      try {
-        await req('/admin/tokens/' + id, { method: 'DELETE' });
-        toast('Token deleted.', 'ok');
-        await refreshAll();
-      } catch (e) { showFlash(e.message, 'error'); }
+      try { await req(`/admin/tokens/${id}`, { method: 'DELETE' }); toast('Deleted'); refreshTokens(); } 
+      catch(e) { flash(e.message, 'error'); }
     }
   });
 }
 
-/* ─── API key actions ─── */
-function doEditKey(id) {
-  const cur = S.keys.find(k => k.id === id);
-  if (!cur) return;
-  openModal({
-    title: 'Edit API Key',
-    fields: [
-      { key: 'name', label: 'Name', value: cur.name || '' },
-      { key: 'rate_limit', label: 'Rate limit / min', type: 'number', value: String(cur.rate_limit ?? 60) },
-      { key: 'daily_limit', label: 'Daily limit', type: 'number', value: String(cur.daily_limit ?? 1000) }
-    ],
-    confirmTxt: 'Save changes',
-    onConfirm: async (v) => {
-      try {
-        await req('/admin/apikeys/' + id, { method: 'PATCH', body: JSON.stringify({ name: v.name.trim(), rate_limit: Number(v.rate_limit), daily_limit: Number(v.daily_limit) }) });
-        toast('API key updated.', 'ok');
-        await refreshAll();
-      } catch (e) { showFlash(e.message, 'error'); }
-    }
-  });
-}
-
-async function doToggleKey(id, status) {
-  try {
-    await req('/admin/apikeys/' + id, { method: 'PATCH', body: JSON.stringify({ status }) });
-    toast('API key ' + (status === 'active' ? 'enabled.' : 'disabled.'), 'ok');
-    await refreshAll();
-  } catch (e) { showFlash(e.message, 'error'); }
+async function doToggleToken(id, status) {
+  try { await req(`/admin/tokens/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }); toast('Token ' + status); refreshTokens(); }
+  catch(e) { flash(e.message, 'error'); }
 }
 
 function doRegenKey(id) {
   openModal({
-    title: 'Regenerate API Key #' + id,
-    msg: 'A new secret key will be generated. All existing clients using the current key will stop working immediately.',
-    confirmTxt: 'Regenerate', confirmCls: 'warn',
+    title: 'Regenerate Key', msg: 'Connected clients will IMMEDIATELY lose access.', confirmTxt: 'Regenerate', confirmCls: 'danger',
     onConfirm: async () => {
       try {
-        const p = await req('/admin/apikeys/' + id + '/regenerate', { method: 'POST' });
-        showFlash('New API key generated — copy it now.', 'warn', p.key || '');
-        await refreshAll();
-      } catch (e) { showFlash(e.message, 'error'); }
+        const r = await req(`/admin/apikeys/${id}/regenerate`, { method: 'POST' });
+        flash('New API Key Generated. COPY IT NOW!', 'warn', r.key);
+        refreshKeys();
+      } catch(e) { flash(e.message, 'error'); }
     }
   });
 }
 
 function doDeleteKey(id) {
   openModal({
-    title: 'Delete API Key #' + id,
-    msg: 'This will permanently revoke the API key. Connected clients will stop working.',
-    confirmTxt: 'Delete', confirmCls: 'danger',
+    title: 'Delete Key', msg: 'Permanently revoke client API Key?', confirmTxt: 'Delete', confirmCls: 'danger',
     onConfirm: async () => {
-      try {
-        await req('/admin/apikeys/' + id, { method: 'DELETE' });
-        toast('API key deleted.', 'ok');
-        await refreshAll();
-      } catch (e) { showFlash(e.message, 'error'); }
+      try { await req(`/admin/apikeys/${id}`, { method: 'DELETE' }); toast('Key Deleted'); refreshKeys(); } 
+      catch(e) { flash(e.message, 'error'); }
     }
   });
 }
 
-/* ─── Form listeners ─── */
+async function doToggleKey(id, status) {
+  try { await req(`/admin/apikeys/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }); toast('Key ' + status); refreshKeys(); }
+  catch(e) { flash(e.message, 'error'); }
+}
+
+/* Cache Handles */
+function doClearCache() {
+  openModal({
+    title: 'Clear Entire Cache', msg: 'Are you sure? This will delete all cached resources immediately.', confirmTxt: 'Clear Cache', confirmCls: 'danger',
+    onConfirm: async () => {
+      try { 
+        await req('/admin/cache/clear', { method: 'POST', body: JSON.stringify({ type: 'image' }) }); 
+        await req('/admin/cache/clear', { method: 'POST', body: JSON.stringify({ type: 'video' }) }).catch(e => null); 
+        toast('Cache cleared'); refreshCache(); 
+      } catch(e) { flash(e.message, 'error'); }
+    }
+  });
+}
+async function doDelCacheFile(type, name) {
+  try { await req('/admin/cache/delete', { method: 'POST', body: JSON.stringify({ type, names: [name] }) }); toast('File removed'); refreshCache(); }
+  catch(e) { flash(e.message, 'error'); }
+}
+
+
+/* ─── FORMS ─── */
 document.getElementById('loginForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const btn = document.getElementById('loginButton');
-  btn.disabled = true;
-  clearFlash();
+  const btn = e.target.querySelector('button'); btn.disabled = true;
   try {
     await req('/admin/login', { method: 'POST', body: JSON.stringify({ key: document.getElementById('appKeyInput').value }) });
-    document.getElementById('appKeyInput').value = '';
-    loginSection.classList.add('hidden');
-    appSection.classList.remove('hidden');
-    logoutButton.classList.remove('hidden');
-    toast('Signed in.', 'ok');
-    await refreshAll();
-  } catch (e) { showFlash(e.message, 'error'); }
+    document.getElementById('loginView').classList.add('hidden');
+    document.getElementById('appView').classList.remove('hidden');
+    toast('Logged in successfully');
+    switchView(window.location.hash.substring(1) || 'overview');
+  } catch (err) { flash(err.message, 'error', '', 'flashLogin'); }
   finally { btn.disabled = false; }
 });
 
-logoutButton.addEventListener('click', async () => {
+document.getElementById('logoutButton').addEventListener('click', async () => {
   try { await req('/admin/logout', { method: 'POST' }); } catch {}
-  appSection.classList.add('hidden');
-  loginSection.classList.remove('hidden');
-  logoutButton.classList.add('hidden');
-  heroStatusEl.textContent = 'Signed out';
-  toast('Signed out.', 'inf');
-});
-
-document.getElementById('refreshAllButton').addEventListener('click', async () => {
-  try { await refreshAll(); toast('Data refreshed.', 'ok'); }
-  catch (e) { showFlash(e.message, 'error'); }
+  document.getElementById('loginView').classList.remove('hidden');
+  document.getElementById('appView').classList.add('hidden');
+  toast('Signed out');
 });
 
 document.getElementById('tokenImportForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const tokens = document.getElementById('tokenImportInput').value
-    .split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
-  if (!tokens.length) { showFlash('Paste at least one token.', 'error'); return; }
-  const qv = document.getElementById('tokenImportQuota').value.trim();
-  const body = { operation: 'import', tokens, pool: document.getElementById('tokenImportPool').value, remark: document.getElementById('tokenImportRemark').value.trim() };
-  if (qv !== '') body.quota = Number(qv);
-  const btn = document.getElementById('tokenImportButton');
-  btn.disabled = true;
+  const tokens = document.getElementById('tokenImportInput').value.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);
+  if(!tokens.length) return flash('Enter at least one token', 'error');
+  
+  const pool = document.getElementById('tokenImportPool').value;
+  const quota = document.getElementById('tokenImportQuota').value;
+  const remark = document.getElementById('tokenImportRemark').value;
+  
+  const body = { operation: 'import', tokens, pool, remark };
+  if(quota) body.quota = parseInt(quota, 10);
+  
+  const btn = document.getElementById('tokenImportBtn'); btn.disabled = true;
   try {
-    const p = await req('/admin/tokens/batch', { method: 'POST', body: JSON.stringify(body) });
+    const res = await req('/admin/tokens/batch', { method:'POST', body: JSON.stringify(body) });
     document.getElementById('tokenImportInput').value = '';
-    toast('Imported ' + p.success + ' token(s).' + (p.failed ? ' ' + p.failed + ' failed.' : ''), p.failed ? 'inf' : 'ok');
-    await refreshAll();
-  } catch (e) { showFlash(e.message, 'error'); }
+    toast(`Imported ${res.success} tokens` + (res.failed ? ` (${res.failed} failed)` : ''));
+    refreshTokens();
+  } catch(err) { flash(err.message, 'error'); }
   finally { btn.disabled = false; }
 });
 
 document.getElementById('keyCreateForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const name = document.getElementById('keyNameInput').value.trim();
-  if (!name) { showFlash('API key name is required.', 'error'); return; }
-  const btn = document.getElementById('keyCreateButton');
-  btn.disabled = true;
+  const name = document.getElementById('keyNameInput').value;
+  const rate = parseInt(document.getElementById('keyRateInput').value, 10) || 60;
+  const daily = parseInt(document.getElementById('keyDailyInput').value, 10) || 2000;
+  
+  const btn = document.getElementById('keyCreateBtn'); btn.disabled = true;
   try {
-    const p = await req('/admin/apikeys', { method: 'POST', body: JSON.stringify({ name, rate_limit: Number(document.getElementById('keyRateInput').value || 0), daily_limit: Number(document.getElementById('keyDailyInput').value || 0) }) });
+    const res = await req('/admin/apikeys', { method:'POST', body: JSON.stringify({ name, rate_limit: rate, daily_limit: daily }) });
     document.getElementById('keyNameInput').value = '';
-    showFlash('API key created — copy it now.', 'warn', p.key || '');
-    await refreshAll();
-  } catch (e) { showFlash(e.message, 'error'); }
+    flash('API Key Created! COPY IT NOW.', 'success', res.key);
+    refreshKeys();
+  } catch(err) { flash(err.message, 'error'); }
   finally { btn.disabled = false; }
 });
 
-document.querySelectorAll('.tab').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tokensTab').classList.toggle('hidden', btn.dataset.tab !== 'tokensTab');
-    document.getElementById('keysTab').classList.toggle('hidden', btn.dataset.tab !== 'keysTab');
-  });
+document.getElementById('configForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const body = {
+    log_level: document.getElementById('cfg_loglevel').value,
+    proxy: {
+      cloudflare_timeout: parseInt(document.getElementById('cfg_cf_timeout').value, 10),
+      max_auth_retries: parseInt(document.getElementById('cfg_auth_retry').value, 10),
+      telegram_bot_token: document.getElementById('cfg_tg_token').value,
+      telegram_chat_id: document.getElementById('cfg_tg_chat').value
+    }
+  };
+  const ak = document.getElementById('cfg_app_key').value;
+  if(ak) body.app_key = ak;
+
+  const btn = document.getElementById('configSaveBtn'); btn.disabled = true;
+  try {
+    await req('/admin/config', { method:'PUT', body: JSON.stringify(body) });
+    document.getElementById('cfg_app_key').value = '';
+    toast('Config saved & overridden');
+    refreshConfig();
+  } catch(err) { flash(err.message, 'error'); }
+  finally { btn.disabled = false; }
 });
 
-/* ─── Expose for inline handlers ─── */
-Object.assign(window, { doReplaceToken, doEditRemark, doRefreshToken, doToggleToken, doDeleteToken, doEditKey, doToggleKey, doRegenKey, doDeleteKey, toggleDd, clip });
+/* Init */
+async function initSession() {
+  try {
+    await req('/admin/verify');
+    document.getElementById('loginView').classList.add('hidden');
+    document.getElementById('appView').classList.remove('hidden');
+    const hash = window.location.hash.substring(1);
+    switchView(hash || 'overview');
+  } catch {
+    document.getElementById('loginView').classList.remove('hidden');
+    document.getElementById('appView').classList.add('hidden');
+  }
+}
 
-checkSession();
+document.addEventListener('DOMContentLoaded', initSession);
+
 </script>
 </body>
 </html>
