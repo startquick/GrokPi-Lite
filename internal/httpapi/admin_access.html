@@ -785,13 +785,7 @@ tr:hover td { background-color: var(--bg-elevated); }
             </div>
             <h3 style="margin: 20px 0 12px; font-size: 14px; font-weight: 500;">Upstream & Proxy</h3>
             <div class="form-grid">
-              <label>Cloudflare Timeout (s) <input id="cfg_cf_timeout" type="number"></label>
-              <label>Auth Max Retries <input id="cfg_auth_retry" type="number"></label>
-            </div>
-            <h3 style="margin: 20px 0 12px; font-size: 14px; font-weight: 500;">Telegram Alerts</h3>
-            <div class="form-grid">
-              <label>Bot Token <input id="cfg_tg_token" type="password"></label>
-              <label>Chat ID <input id="cfg_tg_chat" type="text"></label>
+              <label>Proxy / FlareSolverr Timeout (s) <input id="cfg_cf_timeout" type="number" placeholder="e.g. 60"></label>
             </div>
             <div style="margin-top: 24px;">
               <button type="submit" class="primary" id="configSaveBtn">Save Configuration</button>
@@ -1062,7 +1056,7 @@ async function refreshTokens() {
     const active = t.status === 'active';
     return `<tr>
       <td class="text-xs muted">#${t.id}</td>
-      <td><code>${esc(t.token.substring(0,8))}...${esc(t.token.slice(-4))}</code></td>
+      <td><code>${esc(t.token)}</code></td>
       <td><span class="${bc(t.pool)}">${esc(t.pool || '—')}</span></td>
       <td><span class="${bc(t.status)}">${esc(t.status)}</span></td>
       <td>${qBar(t.chat_quota, t.total_chat_quota)}</td>
@@ -1076,7 +1070,7 @@ async function refreshTokens() {
             <div class="dropdown-menu hidden" id="${did}">
               <button onclick="doToggleToken(${t.id}, '${active ? 'disabled' : 'active'}'); toggleDd('${did}')">${active ? 'Disable' : 'Enable'}</button>
               <button onclick="doReplaceToken(${t.id}); toggleDd('${did}')">Replace Token</button>
-              <div class="dd-divider"></div>
+              <div class="dd-div"></div>
               <button class="danger" onclick="doDeleteToken(${t.id}); toggleDd('${did}')">Delete</button>
             </div>
           </div>
@@ -1115,7 +1109,7 @@ async function refreshKeys() {
             <button class="ghost" onclick="toggleDd('${did}')">${iMore()}</button>
             <div class="dropdown-menu hidden" id="${did}">
               <button onclick="doRegenKey(${k.id}); toggleDd('${did}')">Regenerate Key</button>
-              <div class="dd-divider"></div>
+              <div class="dd-div"></div>
               <button class="danger" onclick="doDeleteKey(${k.id}); toggleDd('${did}')">Delete</button>
             </div>
           </div>
@@ -1161,11 +1155,9 @@ async function refreshUsage() {
 
 async function refreshConfig() {
   const c = await req('/admin/config');
-  document.getElementById('cfg_loglevel').value = c.log_level || 'info';
-  document.getElementById('cfg_cf_timeout').value = c.proxy?.cloudflare_timeout || 60;
-  document.getElementById('cfg_auth_retry').value = c.proxy?.max_auth_retries || 3;
-  document.getElementById('cfg_tg_token').value = c.proxy?.telegram_bot_token || '';
-  document.getElementById('cfg_tg_chat').value = c.proxy?.telegram_chat_id || '';
+  // API returns nested structure: { app: {...}, proxy: {...}, retry: {...}, token: {...} }
+  document.getElementById('cfg_loglevel').value = c.app?.log_level || 'info';
+  document.getElementById('cfg_cf_timeout').value = c.proxy?.timeout || 60;
   document.getElementById('cfg_app_key').value = ''; // Don't show password
 }
 
@@ -1355,17 +1347,17 @@ document.getElementById('keyCreateForm').addEventListener('submit', async e => {
 
 document.getElementById('configForm').addEventListener('submit', async e => {
   e.preventDefault();
+  // ConfigUpdateRequest uses nested: { app: {...}, proxy: {...} }
   const body = {
-    log_level: document.getElementById('cfg_loglevel').value,
+    app: {
+      log_level: document.getElementById('cfg_loglevel').value,
+    },
     proxy: {
-      cloudflare_timeout: parseInt(document.getElementById('cfg_cf_timeout').value, 10),
-      max_auth_retries: parseInt(document.getElementById('cfg_auth_retry').value, 10),
-      telegram_bot_token: document.getElementById('cfg_tg_token').value,
-      telegram_chat_id: document.getElementById('cfg_tg_chat').value
+      timeout: parseInt(document.getElementById('cfg_cf_timeout').value, 10) || undefined,
     }
   };
   const ak = document.getElementById('cfg_app_key').value;
-  if(ak) body.app_key = ak;
+  if(ak) body.app = { ...body.app, app_key: ak };
 
   const btn = document.getElementById('configSaveBtn'); btn.disabled = true;
   try {
