@@ -835,12 +835,14 @@ tr:hover td { background-color: var(--bg-elevated); }
 
       <!-- VIEW: MODELS -->
       <div id="view_models" class="view-section hidden">
-        <div class="page-header">
+        <div class="page-header flex items-start justify-between">
           <div>
             <h1>Model Catalog</h1>
             <p>All Grok models registered in this proxy, sourced from active config. Use the API ID when making requests.</p>
           </div>
-          <button class="ghost" onclick="refreshModels()" style="flex-shrink:0;">Refresh</button>
+          <div class="flex items-center gap-2">
+            <button class="ghost" onclick="refreshModels()">Refresh</button>
+          </div>
         </div>
 
         <div class="stats-grid">
