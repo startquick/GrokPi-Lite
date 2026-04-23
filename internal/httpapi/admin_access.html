@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -624,7 +624,6 @@ tr:hover td { background-color: var(--bg-elevated); }
             <h1>Dashboard</h1>
             <p>System status and overall metrics.</p>
           </div>
-          <button class="ghost" onclick="refreshOverview()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
         </div>
         
         <div class="stats-grid">
@@ -641,7 +640,7 @@ tr:hover td { background-color: var(--bg-elevated); }
           <div class="stat-card">
             <div class="stat-label">Global Chat Quota</div>
             <div class="stat-value" id="st_quota">—</div>
-            <div class="stat-desc" id="st_quota_usage">Remaining / Total (loading...)</div>
+            <div class="stat-desc" id="st_quota_usage">Loading...</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">App Key Source</div>
@@ -669,7 +668,6 @@ tr:hover td { background-color: var(--bg-elevated); }
             <h1>SSO Tokens</h1>
             <p>Manage upstream Grok/xAI tokens for routing.</p>
           </div>
-          <button class="ghost" onclick="refreshTokens()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
         </div>
 
         <div class="card">
@@ -703,7 +701,6 @@ tr:hover td { background-color: var(--bg-elevated); }
             <h1>API Keys</h1>
             <p>Client keys for authenticating requests to this proxy.</p>
           </div>
-          <button class="ghost" onclick="refreshKeys()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
         </div>
 
         <div class="card">
@@ -738,7 +735,6 @@ tr:hover td { background-color: var(--bg-elevated); }
               <option value="week">Last 7 Days</option>
               <option value="month">Last 30 Days</option>
             </select>
-            <button class="ghost" onclick="refreshUsage()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
           </div>
         </div>
 
@@ -761,7 +757,7 @@ tr:hover td { background-color: var(--bg-elevated); }
           <h2>Detailed Logs</h2>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Time</th><th>User / App</th><th>Endpoint</th><th>Model</th><th>Input/Output Tok.</th><th>Elapsed</th><th>App Status</th></tr></thead>
+              <thead><tr><th>Time</th><th>User / App</th><th>Model</th><th>Endpoint</th><th>Input/Output Tok.</th><th>Elapsed</th><th>Status</th></tr></thead>
               <tbody id="usageLogsBody"><tr><td colspan="7" class="muted">Loading logs...</td></tr></tbody>
             </table>
           </div>
@@ -785,7 +781,13 @@ tr:hover td { background-color: var(--bg-elevated); }
             </div>
             <h3 style="margin: 20px 0 12px; font-size: 14px; font-weight: 500;">Upstream & Proxy</h3>
             <div class="form-grid">
-              <label>Proxy / FlareSolverr Timeout (s) <input id="cfg_cf_timeout" type="number" placeholder="e.g. 60"></label>
+              <label>Cloudflare Timeout (s) <input id="cfg_cf_timeout" type="number"></label>
+              <label>Auth Max Retries <input id="cfg_auth_retry" type="number"></label>
+            </div>
+            <h3 style="margin: 20px 0 12px; font-size: 14px; font-weight: 500;">Telegram Alerts</h3>
+            <div class="form-grid">
+              <label>Bot Token <input id="cfg_tg_token" type="password"></label>
+              <label>Chat ID <input id="cfg_tg_chat" type="text"></label>
             </div>
             <div style="margin-top: 24px;">
               <button type="submit" class="primary" id="configSaveBtn">Save Configuration</button>
@@ -803,7 +805,6 @@ tr:hover td { background-color: var(--bg-elevated); }
           </div>
           <div class="flex items-center gap-2">
             <button class="ghost danger-text" onclick="doClearCache()">Clear Entire Cache</button>
-            <button class="ghost" onclick="refreshCache()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
           </div>
         </div>
 
@@ -1011,13 +1012,14 @@ async function refreshOverview() {
 
   try {
     const q = await req('/admin/stats/quota');
-    // API returns { pools: [{total_chat_quota, remaining_chat_quota, ...}] }
+    // API returns { pools: [{pool, total_chat_quota, remaining_chat_quota, ...}] }
     const pools = q.pools || [];
     let totalQuota = 0, remainingQuota = 0;
-    pools.forEach(p => { totalQuota += p.total_chat_quota || 0; remainingQuota += p.remaining_chat_quota || 0; });
+    pools.forEach(p => { totalQuota += (p.total_chat_quota || 0); remainingQuota += (p.remaining_chat_quota || 0); });
     const usedQuota = totalQuota - remainingQuota;
-    document.getElementById('st_quota').textContent = fmtNum(remainingQuota) + ' / ' + fmtNum(totalQuota);
-    document.getElementById('st_quota_usage').textContent = 'Remaining / Total (' + (totalQuota ? Math.round(remainingQuota/totalQuota*100) : 0) + '% remaining)';
+    document.getElementById('st_quota').textContent = fmtNum(usedQuota) + ' / ' + fmtNum(totalQuota);
+    const pct = totalQuota > 0 ? Math.round(remainingQuota / totalQuota * 100) : 0;
+    document.getElementById('st_quota_usage').textContent = 'Remaining / Total (' + pct + '% remaining)';
   } catch {
     document.getElementById('st_quota').textContent = 'ERROR';
   }
@@ -1035,8 +1037,8 @@ async function refreshOverview() {
         <td class="text-xs muted">${esc(fmtTime(l.created_at))}</td>
         <td>${esc(l.app_key_name || '—')}</td>
         <td><code>${esc(l.model || l.endpoint || '—')}</code></td>
-        <td class="text-xs"><span class="badge" title="Input tokens">${fmtNum(l.tokens_input || 0)}</span></td>
-        <td class="text-xs"><span class="badge" title="Output tokens">${fmtNum(l.tokens_output || 0)}</span></td>
+        <td class="text-xs">${fmtNum(l.tokens_input || 0)}</td>
+        <td class="text-xs">${fmtNum(l.tokens_output || 0)}</td>
         <td class="text-xs muted">${l.duration_ms}ms</td>
       </tr>`
     ).join('');
@@ -1056,7 +1058,7 @@ async function refreshTokens() {
     const active = t.status === 'active';
     return `<tr>
       <td class="text-xs muted">#${t.id}</td>
-      <td><code>${esc(t.token)}</code></td>
+      <td><code>${esc(t.token.substring(0,8))}...${esc(t.token.slice(-4))}</code></td>
       <td><span class="${bc(t.pool)}">${esc(t.pool || '—')}</span></td>
       <td><span class="${bc(t.status)}">${esc(t.status)}</span></td>
       <td>${qBar(t.chat_quota, t.total_chat_quota)}</td>
@@ -1070,7 +1072,7 @@ async function refreshTokens() {
             <div class="dropdown-menu hidden" id="${did}">
               <button onclick="doToggleToken(${t.id}, '${active ? 'disabled' : 'active'}'); toggleDd('${did}')">${active ? 'Disable' : 'Enable'}</button>
               <button onclick="doReplaceToken(${t.id}); toggleDd('${did}')">Replace Token</button>
-              <div class="dd-div"></div>
+              <div class="dd-divider"></div>
               <button class="danger" onclick="doDeleteToken(${t.id}); toggleDd('${did}')">Delete</button>
             </div>
           </div>
@@ -1109,7 +1111,7 @@ async function refreshKeys() {
             <button class="ghost" onclick="toggleDd('${did}')">${iMore()}</button>
             <div class="dropdown-menu hidden" id="${did}">
               <button onclick="doRegenKey(${k.id}); toggleDd('${did}')">Regenerate Key</button>
-              <div class="dd-div"></div>
+              <div class="dd-divider"></div>
               <button class="danger" onclick="doDeleteKey(${k.id}); toggleDd('${did}')">Delete</button>
             </div>
           </div>
@@ -1120,7 +1122,7 @@ async function refreshKeys() {
 }
 
 async function refreshUsage() {
-  const p = document.getElementById('usagePeriod').value || 'day';
+  const p = document.getElementById('usagePeriod').value || '24h';
   
   // Total stats map to the system/usage endpoint
   try {
@@ -1143,8 +1145,8 @@ async function refreshUsage() {
       `<tr>
         <td class="text-xs muted">${esc(fmtTime(l.created_at))}</td>
         <td>${esc(l.app_key_name || '—')}</td>
-        <td><code>${esc(l.endpoint || '—')}</code></td>
-        <td class="text-xs muted"><code>${esc(l.model || '—')}</code></td>
+        <td><code>${esc(l.model || '—')}</code></td>
+        <td class="text-xs muted">${esc(l.endpoint || '—')}</td>
         <td class="text-xs"><span class="badge" title="Input">${fmtNum(l.tokens_input || 0)}</span> / <span class="badge" title="Output">${fmtNum(l.tokens_output || 0)}</span></td>
         <td class="text-xs muted">${l.duration_ms}ms</td>
         <td><span class="${l.status >= 400 ? 'badge error' : 'badge success'}">${l.status >= 400 ? 'ERR' : 'OK'}</span></td>
@@ -1155,9 +1157,11 @@ async function refreshUsage() {
 
 async function refreshConfig() {
   const c = await req('/admin/config');
-  // API returns nested structure: { app: {...}, proxy: {...}, retry: {...}, token: {...} }
-  document.getElementById('cfg_loglevel').value = c.app?.log_level || 'info';
-  document.getElementById('cfg_cf_timeout').value = c.proxy?.timeout || 60;
+  document.getElementById('cfg_loglevel').value = c.log_level || 'info';
+  document.getElementById('cfg_cf_timeout').value = c.proxy?.cloudflare_timeout || 60;
+  document.getElementById('cfg_auth_retry').value = c.proxy?.max_auth_retries || 3;
+  document.getElementById('cfg_tg_token').value = c.proxy?.telegram_bot_token || '';
+  document.getElementById('cfg_tg_chat').value = c.proxy?.telegram_chat_id || '';
   document.getElementById('cfg_app_key').value = ''; // Don't show password
 }
 
@@ -1347,17 +1351,17 @@ document.getElementById('keyCreateForm').addEventListener('submit', async e => {
 
 document.getElementById('configForm').addEventListener('submit', async e => {
   e.preventDefault();
-  // ConfigUpdateRequest uses nested: { app: {...}, proxy: {...} }
   const body = {
-    app: {
-      log_level: document.getElementById('cfg_loglevel').value,
-    },
+    log_level: document.getElementById('cfg_loglevel').value,
     proxy: {
-      timeout: parseInt(document.getElementById('cfg_cf_timeout').value, 10) || undefined,
+      cloudflare_timeout: parseInt(document.getElementById('cfg_cf_timeout').value, 10),
+      max_auth_retries: parseInt(document.getElementById('cfg_auth_retry').value, 10),
+      telegram_bot_token: document.getElementById('cfg_tg_token').value,
+      telegram_chat_id: document.getElementById('cfg_tg_chat').value
     }
   };
   const ak = document.getElementById('cfg_app_key').value;
-  if(ak) body.app = { ...body.app, app_key: ak };
+  if(ak) body.app_key = ak;
 
   const btn = document.getElementById('configSaveBtn'); btn.disabled = true;
   try {

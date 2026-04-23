@@ -89,7 +89,6 @@
             <h1>Dashboard</h1>
             <p>System status and overall metrics.</p>
           </div>
-          <button class="ghost" onclick="refreshOverview()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
         </div>
         
         <div class="stats-grid">
@@ -134,7 +133,6 @@
             <h1>SSO Tokens</h1>
             <p>Manage upstream Grok/xAI tokens for routing.</p>
           </div>
-          <button class="ghost" onclick="refreshTokens()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
         </div>
 
         <div class="card">
@@ -168,7 +166,6 @@
             <h1>API Keys</h1>
             <p>Client keys for authenticating requests to this proxy.</p>
           </div>
-          <button class="ghost" onclick="refreshKeys()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
         </div>
 
         <div class="card">
@@ -203,7 +200,6 @@
               <option value="week">Last 7 Days</option>
               <option value="month">Last 30 Days</option>
             </select>
-            <button class="ghost" onclick="refreshUsage()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
           </div>
         </div>
 
@@ -226,7 +222,7 @@
           <h2>Detailed Logs</h2>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Time</th><th>User / App</th><th>Endpoint</th><th>Model</th><th>Input/Output Tok.</th><th>Elapsed</th><th>App Status</th></tr></thead>
+              <thead><tr><th>Time</th><th>User / App</th><th>Model</th><th>Endpoint</th><th>Input/Output Tok.</th><th>Elapsed</th><th>Status</th></tr></thead>
               <tbody id="usageLogsBody"><tr><td colspan="7" class="muted">Loading logs...</td></tr></tbody>
             </table>
           </div>
@@ -274,7 +270,6 @@
           </div>
           <div class="flex items-center gap-2">
             <button class="ghost danger-text" onclick="doClearCache()">Clear Entire Cache</button>
-            <button class="ghost" onclick="refreshCache()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
           </div>
         </div>
 

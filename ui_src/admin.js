@@ -178,8 +178,14 @@ async function refreshOverview() {
 
   try {
     const q = await req('/admin/stats/quota');
-    document.getElementById('st_quota').textContent = fmtNum(q.used_quota) + ' / ' + fmtNum(q.total_quota);
-    document.getElementById('st_quota_usage').textContent = 'Global aggregate (' + (q.total_quota ? Math.round(q.used_quota/q.total_quota*100) : 0) + '%)';
+    // API returns { pools: [{pool, total_chat_quota, remaining_chat_quota, ...}] }
+    const pools = q.pools || [];
+    let totalQuota = 0, remainingQuota = 0;
+    pools.forEach(p => { totalQuota += (p.total_chat_quota || 0); remainingQuota += (p.remaining_chat_quota || 0); });
+    const usedQuota = totalQuota - remainingQuota;
+    document.getElementById('st_quota').textContent = fmtNum(usedQuota) + ' / ' + fmtNum(totalQuota);
+    const pct = totalQuota > 0 ? Math.round(remainingQuota / totalQuota * 100) : 0;
+    document.getElementById('st_quota_usage').textContent = 'Remaining / Total (' + pct + '% remaining)';
   } catch {
     document.getElementById('st_quota').textContent = 'ERROR';
   }
@@ -196,8 +202,9 @@ async function refreshOverview() {
       `<tr>
         <td class="text-xs muted">${esc(fmtTime(l.created_at))}</td>
         <td>${esc(l.app_key_name || '—')}</td>
-        <td><code>${esc(l.model_requested)}</code></td>
-        <td class="text-xs"><span class="badge">${l.input_tokens || 0}</span> / <span class="badge">${l.output_tokens || 0}</span></td>
+        <td><code>${esc(l.model || l.endpoint || '—')}</code></td>
+        <td class="text-xs">${fmtNum(l.tokens_input || 0)}</td>
+        <td class="text-xs">${fmtNum(l.tokens_output || 0)}</td>
         <td class="text-xs muted">${l.duration_ms}ms</td>
       </tr>`
     ).join('');
@@ -303,12 +310,12 @@ async function refreshUsage() {
     tbody.innerHTML = res.data.map(l => 
       `<tr>
         <td class="text-xs muted">${esc(fmtTime(l.created_at))}</td>
-        <td>${esc(l.app_key_name || 'Admin UI')}</td>
-        <td><code>${esc(l.model_requested || l.endpoint)}</code></td>
-        <td class="text-xs muted">${esc(l.mapped_model || '—')}</td>
-        <td class="text-xs"><span class="badge" title="Input">${l.input_tokens || 0}</span> / <span class="badge" title="Output">${l.output_tokens || 0}</span></td>
+        <td>${esc(l.app_key_name || '—')}</td>
+        <td><code>${esc(l.model || '—')}</code></td>
+        <td class="text-xs muted">${esc(l.endpoint || '—')}</td>
+        <td class="text-xs"><span class="badge" title="Input">${fmtNum(l.tokens_input || 0)}</span> / <span class="badge" title="Output">${fmtNum(l.tokens_output || 0)}</span></td>
         <td class="text-xs muted">${l.duration_ms}ms</td>
-        <td><span class="${l.error_message ? 'badge error' : 'badge success'}">${l.error_message ? 'ERR' : 'OK'}</span></td>
+        <td><span class="${l.status >= 400 ? 'badge error' : 'badge success'}">${l.status >= 400 ? 'ERR' : 'OK'}</span></td>
       </tr>`
     ).join('');
   } catch {}
