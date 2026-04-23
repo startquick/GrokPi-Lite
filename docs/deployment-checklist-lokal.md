@@ -1,41 +1,41 @@
-# Deployment Checklist Lokal (Windows/PowerShell)
+# Local Deployment Checklist (Windows/PowerShell)
 
-Panduan ini menggunakan **Docker sebagai metode utama** — konsisten dengan deployment VPS.
-Tidak perlu Go toolchain di Windows; semua build terjadi di dalam container.
+This guide uses **Docker as the main method** — consistent with VPS deployment.
+No Go toolchain is needed on Windows; all builds happen inside the container.
 
 ---
 
-## Setup Awal (Sekali Saja)
+## Initial Setup (One-time)
 
-**1. Masuk ke folder project**
+**1. Enter the project folder**
 
 ```powershell
 cd "E:\GrokPi Lite"
 ```
 
-**2. Siapkan config lokal**
+**2. Setup local config**
 
-Salin template default:
+Copy the default template:
 
 ```powershell
 Copy-Item .\config.defaults.toml .\config.toml
 ```
 
-Edit `config.toml`, minimal ubah bagian ini:
+Edit `config.toml`, at minimum change this section:
 
 ```toml
 [app]
-app_key = "ganti-dengan-key-admin-sendiri"  # WAJIB diubah dari default
+app_key = "replace-with-your-own-admin-key"  # REQUIRED to be changed from default
 host = "0.0.0.0"
 port = 8080
 ```
 
 > [!IMPORTANT]
-> **Jangan biarkan `app_key` tetap `QUICKstart012345+`** — container akan menolak start jika masih memakai nilai default ini.
+> **Do not leave `app_key` as `QUICKstart012345+`** — the container will refuse to start if this default value is still used.
 
-**3. Siapkan file `.env` lokal**
+**3. Setup local `.env` file**
 
-Buat file `.env` di root project (jika belum ada):
+Create a `.env` file in the project root (if it doesn't exist yet):
 
 ```powershell
 @"
@@ -43,13 +43,13 @@ COMPOSE_FILE=docker-compose.yml:docker-compose.local.yml
 "@ | Set-Content .\.env
 ```
 
-File ini memberitahu Docker Compose untuk menggabungkan kedua file compose secara otomatis,
-sehingga kamu **tidak perlu menulis `-f` flags** setiap kali.
+This file tells Docker Compose to merge both compose files automatically,
+so you **don't need to pass `-f` flags** every time.
 
 > [!NOTE]
-> File `.env` dan `docker-compose.local.yml` ada di `.gitignore` — tidak akan ikut di-commit.
+> The `.env` and `docker-compose.local.yml` files are in `.gitignore` — they will not be committed.
 
-**4. Buat direktori runtime**
+**4. Create runtime directories**
 
 ```powershell
 New-Item -ItemType Directory -Force -Path .\data, .\logs
@@ -57,46 +57,46 @@ New-Item -ItemType Directory -Force -Path .\data, .\logs
 
 ---
 
-## Menjalankan Service
+## Running the Service
 
-**5. Jalankan service (perintah utama)**
+**5. Run the service (main command)**
 
 ```powershell
 docker compose up -d --build
 ```
 
-Atau via Makefile:
+Or via Makefile:
 
 ```powershell
 make docker-up
 ```
 
-Perintah ini akan:
-- Build binary Go di dalam container (tidak perlu Go di Windows)
-- Menjalankan FlareSolverr dan GrokPi sebagai service teregistrasi
-- Semua service berjalan di background (`-d`)
+This command will:
+- Build the Go binary inside the container (no Go needed on Windows)
+- Start FlareSolverr and GrokPi as registered services
+- Ensure all services run in the background (`-d`)
 
-**6. Cek status service**
+**6. Check service status**
 
 ```powershell
 docker compose ps
-# atau
+# or
 make docker-ps
 ```
 
-Ekspektasi: kedua service (`flaresolverr` dan `grokpi`) menunjukkan status `healthy`.
+Expectation: both services (`flaresolverr` and `grokpi`) show a `healthy` status.
 
-**7. Cek health endpoint**
+**7. Check health endpoint**
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8080/health
 ```
 
-**8. Lihat log realtime**
+**8. View realtime logs**
 
 ```powershell
 docker compose logs -f grokpi
-# atau
+# or
 make docker-logs
 ```
 
@@ -104,43 +104,43 @@ make docker-logs
 
 ## Admin & Token Management
 
-**9. Akses Admin UI (via browser)**
+**9. Access Admin UI (via browser)**
 
-GrokPi menyediakan halaman admin berbasis web yang built-in. Setelah service berjalan, buka browser dan akses:
+GrokPi provides a built-in web-based admin page. Once the service is running, open a browser and navigate to:
 
 ```
 http://127.0.0.1:8080/admin/access
 ```
 
-Login dengan `app_key` yang sudah kamu set di `config.toml`. Dari dashboard ini kamu bisa:
-- **Tokens** — import, lihat status, hapus, dan refresh token Grok SSO
-- **API Keys** — buat dan kelola client key `sk-...`
-- **Stats** — lihat quota, usage log, dan token pool
-- **Config** — edit runtime config tanpa restart
-- **Cache** — kelola cache file video/image
+Log in with the `app_key` you set in `config.toml`. From this dashboard you can:
+- **Tokens** — import, view status, delete, and refresh Grok SSO tokens
+- **API Keys** — create and manage `sk-...` client keys
+- **Stats** — view quotas, usage logs, and the token pool
+- **Config** — edit runtime config without restarting
+- **Cache** — manage video/image cache files
 
 > [!NOTE]
-> Admin UI di-*embed* langsung ke dalam binary, sehingga tersedia otomatis tanpa perlu setup tambahan.
+> The Admin UI is *embedded* directly into the binary, so it's automatically available without any extra setup.
 
-**10. Alternatif: CLI script (tanpa browser)**
+**10. Alternative: CLI script (no browser)**
 
-Sesuai aturan arsitektur repo ini, jangan kelola admin dengan `curl` manual. Pakai script interaktif Windows:
+In accordance with this repo's architectural rules, do not manage admin manually with `curl`. Use the interactive Windows script:
 
 ```powershell
 .\scripts\windows\grokpi_admin.ps1
 ```
 
-Dari situ biasanya alurnya:
-- Login pakai `app_key` yang telah dibuat di langkah 2
-- Import token Grok SSO
-- Buat client API key dengan awalan `sk-...`
-- Lihat stats/token status
+From there the typical flow is:
+- Login using the `app_key` created in step 2
+- Import Grok SSO tokens
+- Create a client API key with an `sk-...` prefix
+- View stats/token status
 
 ---
 
-## Menggunakan API
+## Using the API
 
-**11. Test endpoint secara lokal**
+**11. Test endpoint locally**
 
 ```powershell
 $headers = @{
@@ -151,7 +151,7 @@ $headers = @{
 $body = @{
   model = "grok-4.1-fast"
   messages = @(
-    @{ role = "user"; content = "Halo, jawab singkat." }
+    @{ role = "user"; content = "Hello, answer briefly." }
   )
   stream = $false
 } | ConvertTo-Json -Depth 10
@@ -163,7 +163,7 @@ Invoke-RestMethod `
   -Body $body
 ```
 
-Test endpoint Anthropic-compatible:
+Test the Anthropic-compatible endpoint:
 
 ```powershell
 $headers = @{
@@ -174,7 +174,7 @@ $headers = @{
 $body = @{
   model = "grok-4.1-fast"
   messages = @(
-    @{ role = "user"; content = "Halo dari endpoint messages." }
+    @{ role = "user"; content = "Hello from the messages endpoint." }
   )
   max_tokens = 256
   stream = $false
@@ -187,7 +187,7 @@ Invoke-RestMethod `
   -Body $body
 ```
 
-Lihat model list:
+View the model list:
 
 ```powershell
 Invoke-RestMethod `
@@ -197,39 +197,39 @@ Invoke-RestMethod `
 
 ---
 
-## Update Kode
+## Updating the Code
 
-**11. Update setelah ada perubahan kode**
+**11. Update after code changes**
 
 ```powershell
 git pull
 docker compose build --no-cache grokpi
 docker compose up -d
-# atau
+# or
 make docker-up
 ```
 
-Opsi `--no-cache` memastikan image Docker membuang state lama dan membungkus ulang pembaruan file terbaru. Anda tidak perlu menjalankan `make build` manual karena semuanya dikompilasi (otomatis rebuild) dengan kode terbaru di dalam container.
+The `--no-cache` option ensures the Docker image discards the old state and completely rebuilds the latest file changes. You don't need to manually run `make build` because everything is compiled (automatically rebuilt) with the latest code inside the container.
 
 ---
 
-## Perintah Docker yang Berguna
+## Useful Docker Commands
 
-| Perintah | Keterangan |
+| Command | Description |
 |---|---|
-| `make docker-up` | Jalankan semua service (build + start) |
-| `make docker-down` | Hentikan dan hapus semua container |
-| `make docker-logs` | Ikuti log GrokPi secara realtime |
-| `make docker-ps` | Lihat status semua container |
-| `make docker-restart` | Restart container GrokPi saja |
-| `make docker-shell` | Masuk ke shell dalam container GrokPi |
+| `make docker-up` | Run all services (build + start) |
+| `make docker-down` | Stop and remove all containers |
+| `make docker-logs` | Follow GrokPi logs in realtime |
+| `make docker-ps` | View status of all containers |
+| `make docker-restart` | Restart the GrokPi container only |
+| `make docker-shell` | Enter the shell inside the GrokPi container |
 
 ---
 
-## Hal yang Jangan Dilakukan
+## What Not to Do
 
 > [!CAUTION]
-> - Jangan jalankan `make clean` sembarangan — akan menghapus folder database `data/`.
-> - Jangan kelola token admin dan API Key menggunakan perintah manual `curl`; selalu gunakan `./scripts/windows/grokpi_admin.ps1` atau Admin UI browser.
-> - Jangan edit `docker-compose.yml` untuk kebutuhan lokal saja — gunakan `docker-compose.local.yml` sebagai override.
-> - **Jangan jalankan service dengan `make run`, `make dev`, atau `./bin/grokpi.exe` langsung** — Docker adalah satu-satunya metode deployment yang didukung. Cara native binary hanya untuk keperluan pengembangan Go tingkat lanjut.
+> - Do not run `make clean` carelessly — it will delete the `data/` database folder.
+> - Do not manage admin tokens and API Keys using manual `curl` commands; always use `./scripts/windows/grokpi_admin.ps1` or the browser Admin UI.
+> - Do not edit `docker-compose.yml` for local needs only — use `docker-compose.local.yml` as an override.
+> - **Do not run the service directly with `make run`, `make dev`, or `./bin/grokpi.exe`** — Docker is the only supported deployment method. The native binary method is only for advanced Go development purposes.

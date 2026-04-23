@@ -1,35 +1,35 @@
-# Checklist Deployment Final ke VPS Ubuntu
+# Final Deployment Checklist to Ubuntu VPS
 
-Dokumen ini adalah checklist praktis yang bisa diikuti langkah demi langkah untuk membawa GrokPi Lite dari repository lokal ke VPS Ubuntu yang siap dipakai di internet dengan reverse proxy HTTPS.
+This document is a practical step-by-step checklist to bring GrokPi Lite from a local repository to an Ubuntu VPS ready for internet access with an HTTPS reverse proxy.
 
-Gunakan checklist ini bersama panduan lengkap di `docs/deployment.md`.
+Use this checklist alongside the complete guide in `docs/deployment.md`.
 
-## 1. Persiapan VPS
+## 1. VPS Preparation
 
-1. Login ke VPS sebagai `root`.
+1. Login to the VPS as `root`.
 ```bash
-ssh root@IP_VPS
+ssh root@VPS_IP
 ```
 
-2. Update sistem.
+2. Update the system.
 ```bash
 apt-get update && apt-get upgrade -y
 ```
 
-3. Buat user deploy non-root.
+3. Create a non-root deploy user.
 ```bash
 adduser grokdeploy
 usermod -aG sudo grokdeploy
 ```
 
-4. Pindah ke user deploy.
+4. Switch to the deploy user.
 ```bash
 su - grokdeploy
 ```
 
-## 2. Hardening Dasar
+## 2. Basic Hardening
 
-1. Install dan aktifkan UFW.
+1. Install and enable UFW.
 ```bash
 sudo apt-get install -y ufw
 sudo ufw allow OpenSSH
@@ -41,16 +41,16 @@ sudo ufw enable
 sudo ufw status
 ```
 
-2. Pastikan hanya port `22`, `80`, dan `443` yang terbuka ke publik.
+2. Ensure only ports `22`, `80`, and `443` are open to the public.
 
-## 3. Install Dependensi
+## 3. Install Dependencies
 
-1. Install paket dasar.
+1. Install base packages.
 ```bash
 sudo apt-get install -y ca-certificates curl gnupg lsb-release git make
 ```
 
-2. Install Docker dan Docker Compose plugin.
+2. Install Docker and the Docker Compose plugin.
 ```bash
 sudo install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
@@ -61,33 +61,33 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 sudo usermod -aG docker $USER
 ```
 
-3. Logout lalu login ulang agar grup `docker` aktif.
+3. Logout and login again so the `docker` group is active.
 ```bash
 exit
-ssh grokdeploy@IP_VPS
+ssh grokdeploy@VPS_IP
 docker --version
 docker compose version
 ```
 
-## 4. Ambil Source Code
+## 4. Retrieve Source Code
 
-1. Clone repository.
+1. Clone the repository.
 ```bash
 cd ~
 git clone https://github.com/startquick/GrokPi-Lite.git
 cd GrokPi-Lite
 ```
 
-2. Verifikasi file penting ada.
+2. Verify important files exist.
 ```bash
 ls
 ls docs
 ls scripts/linux
 ```
 
-## 5. Siapkan Konfigurasi Produksi
+## 5. Setup Production Configuration
 
-1. Salin template config.
+1. Copy the config template.
 ```bash
 cp config.defaults.toml config.toml
 ```
@@ -97,54 +97,54 @@ cp config.defaults.toml config.toml
 nano config.toml
 ```
 
-3. Wajib pastikan hal berikut:
-- `app.app_key` diganti dengan secret baru yang kuat
-- `db_driver` dan `db_path` sesuai kebutuhan
-- `proxy.*` diisi jika memang memakai FlareSolverr/proxy
-- jangan memakai nilai default `QUICKstart012345+`
+3. You must ensure the following:
+- `app.app_key` is replaced with a strong new secret
+- `db_driver` and `db_path` fit your needs
+- `proxy.*` is filled if using FlareSolverr/proxy
+- do not use the default value `QUICKstart012345+`
 
-4. Siapkan direktori runtime.
+4. Setup the runtime directories.
 ```bash
 mkdir -p data logs
 sudo chown -R 1000:1000 data logs
 ```
 
-## 6. Jalankan Container
+## 6. Run the Container
 
-1. Jalankan service (`--build` langsung trigger multi-stage build di dalam Docker).
+1. Start the service (`--build` directly triggers a multi-stage build inside Docker).
 ```bash
 docker compose up -d --build
 ```
 
-3. Cek status container.
+3. Check the container status.
 ```bash
 docker compose ps
 docker compose logs --tail=100 grokpi
 docker compose logs --tail=100 flaresolverr
 ```
 
-4. Cek health internal.
+4. Check internal health.
 ```bash
 curl -s http://127.0.0.1:8080/health
 ```
 
-## 7. Verifikasi Network Exposure
+## 7. Verify Network Exposure
 
-1. Pastikan backend hanya bind localhost.
+1. Ensure the backend only binds to localhost.
 ```bash
 ss -tulpn | grep 8080
 ```
 
-2. Pastikan FlareSolverr tidak dipublish ke host.
+2. Ensure FlareSolverr is not published to the host.
 ```bash
 ss -tulpn | grep 8191
 ```
 
-Ekspektasi:
-- `8080` hanya muncul di `127.0.0.1`
-- `8191` tidak muncul sebagai port host publik
+Expectations:
+- `8080` only appears on `127.0.0.1`
+- `8191` does not appear as a public host port
 
-## 8. Setup Reverse Proxy HTTPS dengan Caddy
+## 8. Setup Reverse Proxy HTTPS with Caddy
 
 1. Install Caddy.
 ```bash
@@ -155,105 +155,105 @@ sudo apt-get update
 sudo apt-get install -y caddy
 ```
 
-2. Arahkan domain ke IP VPS di DNS provider.
+2. Point the domain to the VPS IP in your DNS provider.
 
-3. Edit Caddyfile.
+3. Edit the Caddyfile.
 ```bash
 sudo nano /etc/caddy/Caddyfile
 ```
 
-4. Isi minimal:
+4. Provide this minimum configuration:
 ```text
-api.domainanda.com {
+api.yourdomain.com {
     reverse_proxy 127.0.0.1:8080
 }
 ```
 
-5. Restart dan cek Caddy.
+5. Restart and check Caddy.
 ```bash
 sudo systemctl restart caddy
 sudo systemctl status caddy --no-pager
-curl -I https://api.domainanda.com/health
+curl -I https://api.yourdomain.com/health
 ```
 
-## 9. Konfigurasi Admin dan API Key
+## 9. Admin Configuration and API Key
 
-### Opsi A: Admin UI via Browser (Direkomendasikan)
+### Option A: Admin UI via Browser (Recommended)
 
-GrokPi menyediakan halaman admin berbasis web yang built-in. Setelah Caddy aktif, buka browser dan akses:
+GrokPi provides a built-in web-based admin page. After Caddy is active, open your browser and navigate to:
 
 ```
-https://api.domainanda.com/admin/access
+https://api.yourdomain.com/admin/access
 ```
 
-Atau jika belum ada domain (akses langsung dari VPS):
+Or if you don't have a domain yet (direct access from the VPS):
 
 ```
 http://127.0.0.1:8080/admin/access
 ```
 
-Login dengan `app_key` yang sudah kamu set di `config.toml`. Dari dashboard ini kamu bisa:
-- **Tokens** — import, lihat status, hapus, dan refresh token Grok SSO
-- **API Keys** — buat dan kelola client key `sk-...`
-- **Stats** — lihat quota, usage log, dan token pool
-- **Config** — edit runtime config tanpa restart
-- **Cache** — kelola cache file video/image
+Log in with the `app_key` you set in `config.toml`. From this dashboard you can:
+- **Tokens** — import, view status, delete, and refresh Grok SSO tokens
+- **API Keys** — create and manage `sk-...` client keys
+- **Stats** — view quotas, usage logs, and the token pool
+- **Config** — edit runtime config without restarting
+- **Cache** — manage video/image cache files
 
 > [!NOTE]
-> Admin UI di-*embed* langsung ke dalam binary, sehingga tersedia otomatis tanpa setup tambahan.
+> The Admin UI is *embedded* directly into the binary, so it's automatically available without extra setup.
 
-### Opsi B: CLI Script (via SSH)
+### Option B: CLI Script (via SSH)
 
-1. Jalankan admin script.
+1. Run the admin script.
 ```bash
 cd ~/GrokPi-Lite
 chmod +x ./scripts/linux/grokpi_admin.sh
 ./scripts/linux/grokpi_admin.sh
 ```
 
-2. Lakukan langkah berikut:
-- login admin dengan `app_key`
-- import token Grok SSO
-- buat API key client `sk-...`
+2. Follow these steps:
+- log in as admin with the `app_key`
+- import Grok SSO tokens
+- create a client API key `sk-...`
 
-## 10. Smoke Test API
+## 10. API Smoke Test
 
-1. Test daftar model.
+1. Test the model list.
 ```bash
-curl -s https://api.domainanda.com/v1/models \
-  -H "Authorization: Bearer API_KEY_ANDA"
+curl -s https://api.yourdomain.com/v1/models \
+  -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
-2. Test endpoint OpenAI-compatible.
+2. Test the OpenAI-compatible endpoint.
 ```bash
-curl -s https://api.domainanda.com/v1/chat/completions \
+curl -s https://api.yourdomain.com/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer API_KEY_ANDA" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
     "model": "grok-4.1-fast",
-    "messages": [{"role":"user","content":"Halo dari VPS"}]
+    "messages": [{"role":"user","content":"Hello from the VPS"}]
   }'
 ```
 
-3. Test endpoint Anthropic-compatible.
+3. Test the Anthropic-compatible endpoint.
 ```bash
-curl -s https://api.domainanda.com/v1/messages \
+curl -s https://api.yourdomain.com/v1/messages \
   -H "Content-Type: application/json" \
-  -H "x-api-key: API_KEY_ANDA" \
+  -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "model": "grok-4.1-fast",
     "max_tokens": 256,
-    "messages": [{"role":"user","content":"Halo dari endpoint messages"}]
+    "messages": [{"role":"user","content":"Hello from the messages endpoint"}]
   }'
 ```
 
 ## 11. Post-Deploy Smoke Test
 
-Setelah container, reverse proxy, dan admin key siap, jalankan smoke test ringkas ini dari VPS. Ganti `APP_KEY` dan `API_KEY_ANDA` dengan nilai yang benar.
+After the container, reverse proxy, and admin key are ready, run this quick smoke test from the VPS. Replace `APP_KEY` and `YOUR_API_KEY` with the correct values.
 
 ```bash
-APP_KEY='app-key-admin-anda'
-API_KEY='sk-anda'
+APP_KEY='your-admin-app-key'
+API_KEY='your-sk'
 BASE_URL='http://127.0.0.1:8080'
 
 curl -fsS "$BASE_URL/health"
@@ -262,42 +262,42 @@ curl -fsS "$BASE_URL/v1/models" -H "Authorization: Bearer $API_KEY"
 curl -fsS "$BASE_URL/admin/tokens?page_size=10" -H "Authorization: Bearer $APP_KEY"
 ```
 
-Alternatif kalau `make` tersedia di VPS:
+Alternatively, if `make` is available on the VPS:
 
 ```bash
 make smoke BASE_URL=http://127.0.0.1:8080 APP_KEY="$APP_KEY" API_KEY="$API_KEY"
 ```
 
-Ekspektasi:
-- `/health` mengembalikan status `ok`
-- `/admin/verify` mengembalikan `{"status":"ok"}`
-- `/v1/models` mengembalikan daftar model
-- `/admin/tokens` mengembalikan daftar token admin tanpa error auth
+Expectations:
+- `/health` returns an `ok` status
+- `/admin/verify` returns `{"status":"ok"}`
+- `/v1/models` returns the model list
+- `/admin/tokens` returns the admin token list without an auth error
 
-## 12. Backup Awal
+## 12. Initial Backup
 
-Setelah sistem sehat, buat backup awal.
+Once the system is healthy, create an initial backup.
 ```bash
 cd ~/GrokPi-Lite
 tar czf grokpi-backup-$(date +%F).tar.gz config.toml data/
 ```
 
-## 13. Checklist Final Sebelum Dianggap Live
+## 13. Final Checklist Before Going Live
 
-- `app_key` bukan default
-- `docker compose ps` menunjukkan service sehat
-- `curl http://127.0.0.1:8080/health` sukses di VPS
-- `curl -I https://domain/health` sukses dari luar
-- port `8080` tidak terbuka publik
-- port `8191` tidak terbuka publik
-- admin script bisa login
-- `/v1/chat/completions` berhasil
-- `/v1/messages` berhasil
-- backup awal sudah dibuat
+- `app_key` is not default
+- `docker compose ps` shows healthy services
+- `curl http://127.0.0.1:8080/health` succeeds on the VPS
+- `curl -I https://domain/health` succeeds from outside
+- port `8080` is not publicly open
+- port `8191` is not publicly open
+- admin script can log in
+- `/v1/chat/completions` succeeds
+- `/v1/messages` succeeds
+- initial backup has been created
 
-## 14. Update Aman Setelah Live
+## 14. Safe Updates After Going Live
 
-Gunakan alur update yang tidak destruktif:
+Use a non-destructive update flow:
 ```bash
 cd ~/GrokPi-Lite
 git pull
@@ -305,6 +305,6 @@ docker compose build --no-cache grokpi
 docker compose up -d
 ```
 
-Opsi `--no-cache` memastikan image Docker membuang state lama dan membungkus ulang pembaruan file terbaru (termasuk komponen frontend/UI). Anda tidak perlu menjalankan `make build` manual karena semuanya dikompilasi (otomatis rebuild) dengan kode terbaru di dalam container.
+The `--no-cache` option ensures the Docker image discards the old state and completely rebuilds the latest file changes (including the frontend/UI components). You don't need to manually run `make build` because everything is compiled (automatically rebuilt) with the latest code inside the container.
 
-Jika ada perubahan lokal penting pada `config.toml` atau file deploy lain, backup dulu dan selesaikan konflik Git secara manual.
+If there are important local changes to `config.toml` or other deploy files, back them up first and resolve any Git conflicts manually.

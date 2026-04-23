@@ -1,71 +1,71 @@
-# Grokpi — Panduan Self-Hosted
+# Grokpi — Self-Hosted Guide
 
-Grokpi adalah gateway OpenAI-compatible untuk beban kerja chat, gambar, dan video menggunakan Grok.
-Panduan ini berfokus pada self-hosting di server atau VPS milik sendiri.
+Grokpi is an OpenAI-compatible gateway for chat, image, and video workloads using Grok.
+This guide focuses on self-hosting on your own server or VPS.
 
-## 1. Fitur Utama
+## 1. Key Features
 
-- Endpoint Dual-Format: Mendukung protokol **OpenAI-compatible** (`/v1/chat/completions`) dan **Anthropic-compatible** (`/v1/messages`).
-- Endpoint Admin API untuk token pool, API key, riwayat penggunaan, pengaturan, dan cache
-- Binary Go tunggal API-first dengan admin access console embedded yang ringan
-- Mekanisme pintar pemulihan Cloudflare (*CF Challenge Bypass*) dengan *circuit breaker* otomatis
-- Peringatan proaktif status upstream xAI via notifikasi Telegram Webhook
-- SQLite sebagai default, PostgreSQL sebagai opsi
-- Dukungan deployment via Docker Compose
+- Dual-Format Endpoints: Supports both **OpenAI-compatible** (`/v1/chat/completions`) and **Anthropic-compatible** (`/v1/messages`) protocols.
+- Admin API Endpoints for token pools, API keys, usage history, settings, and cache.
+- Single API-first Go binary with a lightweight embedded admin access console.
+- Smart Cloudflare recovery mechanism (*CF Challenge Bypass*) with automatic *circuit breaker*.
+- Proactive alerts on upstream xAI status via Telegram Webhook notifications.
+- SQLite as default, PostgreSQL as an option.
+- Deployment support via Docker Compose.
 
-## 2. Kebutuhan Sistem & Deployment
+## 2. System Requirements & Deployment
 
-GrokPi di-deploy menggunakan **Docker Compose** — baik di lokal maupun VPS. Tidak perlu Go toolchain di mesin host; build binary terjadi di dalam container via multi-stage build.
+GrokPi is deployed using **Docker Compose** — both locally and on a VPS. No Go toolchain is needed on the host machine; binary builds happen inside the container via a multi-stage build.
 
-Panduan lengkap tersedia di dokumen terpisah:
+Complete guides are available in separate documents:
 
-- 👉 **[Checklist Deployment Lokal (Windows)](docs/deployment-checklist-lokal.md)**
-- 👉 **[Checklist Deployment VPS Ubuntu](docs/deployment-checklist-ubuntu.md)**
-- 👉 **[Panduan Deployment Lengkap](docs/deployment.md)**
+- 👉 **[Local Deployment Checklist (Windows)](docs/deployment-checklist-lokal.md)**
+- 👉 **[Ubuntu VPS Deployment Checklist](docs/deployment-checklist-ubuntu.md)**
+- 👉 **[Complete Deployment Guide](docs/deployment.md)**
 
 
 
-## 5. Konfigurasi Awal via Admin Access Console
+## 5. Initial Configuration via Admin Access Console
 
-Untuk perubahan cepat tanpa SSH atau masuk ke server, buka:
+For quick changes without SSH or logging into the server, open:
 
 `http://127.0.0.1:8080/admin/access`
 
-Masuk menggunakan `app_key`, lalu kelola:
+Log in using the `app_key`, then manage:
 
-1. Token upstream Grok
-2. Client API key
+1. Grok upstream tokens
+2. Client API keys
 
-Console ini memakai endpoint admin yang sama dengan script, jadi tetap cocok untuk server ringan tanpa frontend terpisah.
+This console uses the same admin endpoints as the script, making it suitable for lightweight servers without a separate frontend.
 
-## 6. Alternatif via Script Admin
+## 6. Alternative via Admin Script
 
-Kami telah menyediakan script interaktif untuk mempermudah konfigurasi awal tanpa perlu mengingat perintah *curl*.
+We have provided interactive scripts to simplify initial configuration without needing to remember *curl* commands.
 
-**Untuk pengguna Windows:**
-Buka PowerShell, masuk ke direktori proyek, lalu jalankan:
+**For Windows users:**
+Open PowerShell, navigate to the project directory, and run:
 ```powershell
 .\scripts\windows\grokpi_admin.ps1
 ```
 
-**Untuk pengguna Linux / macOS:**
-Buka terminal, masuk ke direktori proyek, berikan izin eksekusi jika perlu, lalu jalankan:
+**For Linux / macOS users:**
+Open the terminal, navigate to the project directory, grant execution permissions if needed, and run:
 ```bash
 chmod +x ./scripts/linux/grokpi_admin.sh
 ./scripts/linux/grokpi_admin.sh
 ```
 
-Menu interaktif akan muncul. Ikuti instruksi di layar untuk:
-1. Menambahkan Token Upstream Grok (Anda bisa menempelkan banyak set token sekaligus dipisah dengan koma).
-2. Membuat API Key (Gunakan ini di App seperti AnythingLLM/Dify Anda).
+An interactive menu will appear. Follow the on-screen instructions to:
+1. Add Grok Upstream Tokens (you can paste multiple token sets at once separated by commas).
+2. Create an API Key (Use this in your Apps like AnythingLLM/Dify).
 
-*API Key inilah yang nanti akan dipakai untuk request ke endpoint `/v1/chat/completions` atau didaftarkan pada LLM Apps seperti AnythingLLM, Dify, dll.*
+*This API Key will be used for requests to the `/v1/chat/completions` endpoint or registered in LLM Apps like AnythingLLM, Dify, etc.*
 
-## 7. Contoh Konfigurasi Minimal
+## 7. Minimal Configuration Example
 
 ```toml
 [app]
-app_key = "GANTI_DENGAN_PASSWORD_KUAT"
+app_key = "REPLACE_WITH_STRONG_PASSWORD"
 host = "0.0.0.0"
 port = 8080
 
@@ -79,24 +79,24 @@ log_json = false
 base_proxy_url = ""
 asset_proxy_url = ""
 enabled = false
-# Opsional - Peringkat Cloudflare Gagal
+# Optional - Cloudflare Failure Alerts
 telegram_bot_token = ""
 telegram_chat_id = ""
 ```
 
-Catatan penting:
+Important notes:
 
-- `app_key` yang kosong akan memblokir akses admin.
-- Jangan bagikan file `config.toml` ke publik.
-- Untuk deployment publik, gunakan reverse proxy dengan TLS.
+- An empty `app_key` will block admin access.
+- Do not share the `config.toml` file publicly.
+- For public deployment, use a reverse proxy with TLS.
 
-## 8. Contoh Penggunaan API
+## 8. API Usage Examples
 
-### 7.1 Daftar Model
+### 7.1 List Models
 
 ```bash
 curl -s http://127.0.0.1:8080/v1/models \
-  -H "Authorization: Bearer API_KEY_ANDA"
+  -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
 ### 7.2 Chat Completion
@@ -104,41 +104,41 @@ curl -s http://127.0.0.1:8080/v1/models \
 ```bash
 curl -s http://127.0.0.1:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer API_KEY_ANDA" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
     "model": "grok-3-mini",
     "messages": [
-      {"role": "user", "content": "Halo dari Grokpi self-hosted"}
+      {"role": "user", "content": "Hello from self-hosted Grokpi"}
     ]
   }'
 ```
 
-### 7.3 Chat Completion (Format Anthropic / Claude)
+### 7.3 Chat Completion (Anthropic / Claude Format)
 
 ```bash
 curl -s http://127.0.0.1:8080/v1/messages \
   -H "Content-Type: application/json" \
-  -H "x-api-key: API_KEY_ANDA" \
+  -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "model": "grok-3",
     "max_tokens": 1024,
-    "system": "Anda adalah asisten cerdas.",
+    "system": "You are a helpful assistant.",
     "messages": [
-      {"role": "user", "content": "Halo dari Grokpi dengan format Anthropic API"}
+      {"role": "user", "content": "Hello from Grokpi with Anthropic API format"}
     ]
   }'
 ```
 
-### 7.4 Generasi Gambar
+### 7.4 Image Generation
 
 ```bash
 curl -s http://127.0.0.1:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer API_KEY_ANDA" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
     "model": "grok-imagine-1.0",
     "messages": [
-      {"role":"user","content":"Danau pegunungan saat matahari terbit"}
+      {"role":"user","content":"Mountain lake at sunrise"}
     ],
     "image_config": {
       "aspect_ratio": "16:9"
@@ -146,16 +146,16 @@ curl -s http://127.0.0.1:8080/v1/chat/completions \
   }'
 ```
 
-### 7.5 Generasi Video
+### 7.5 Video Generation
 
 ```bash
 curl -s http://127.0.0.1:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer API_KEY_ANDA" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
     "model": "grok-imagine-1.0-video",
     "messages": [
-      {"role":"user","content":"Pengambilan gambar drone sinematik di atas sawah hijau"}
+      {"role":"user","content":"Cinematic drone shot over green rice fields"}
     ],
     "video_config": {
       "aspect_ratio": "16:9",
@@ -165,4 +165,3 @@ curl -s http://127.0.0.1:8080/v1/chat/completions \
     }
   }'
 ```
-

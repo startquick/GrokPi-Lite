@@ -1,42 +1,42 @@
-# MasantoID API Reference
+# GrokPi API Reference
 
-Dokumen ini merangkum API yang relevan untuk frontend Studio (Prompt Lab, Image, Video) berdasarkan implementasi server saat ini.
+This document summarizes the relevant API for the Studio frontend (Prompt Lab, Image, Video) based on the current server implementation.
 
-## 1. Base URL dan Auth
+## 1. Base URL and Auth
 
-| Item | Nilai |
+| Item | Value |
 | --- | --- |
-| Base URL lokal | `http://127.0.0.1:8080` |
-| Health endpoint | `GET /health` atau `GET /healthz` (tanpa auth) |
-| API endpoint utama | Prefix `/v1/*` |
-| Auth untuk `/v1/*` | Header `Authorization: Bearer <API_KEY>` |
-| Error auth umum | `401 invalid_api_key`, `429 rate_limit_exceeded`, `429 daily_limit_exceeded` |
+| Local Base URL | `http://127.0.0.1:8080` |
+| Health endpoint | `GET /health` or `GET /healthz` (no auth) |
+| Main API endpoint | Prefix `/v1/*` |
+| Auth for `/v1/*` | Header `Authorization: Bearer <API_KEY>` |
+| Common auth errors | `401 invalid_api_key`, `429 rate_limit_exceeded`, `429 daily_limit_exceeded` |
 
-Contoh header:
+Example header:
 
 ```http
 Authorization: Bearer gf-xxxxxxxxxxxxxxxx
 Content-Type: application/json
 ```
 
-## 2. Endpoint Ringkas
+## 2. Endpoint Summary
 
-| Method | Path | Auth | Fungsi |
+| Method | Path | Auth | Function |
 | --- | --- | --- | --- |
-| GET | `/health` | Tidak | Cek status server |
-| GET | `/v1/models` | API key | Ambil model yang tersedia untuk key tersebut |
-| POST | `/v1/chat/completions` | API key | Chat, image generate/edit, video generate (tergantung model) |
-| GET | `/api/files/video/{name}` | Tidak | Ambil file video cache dari URL hasil generate |
+| GET | `/health` | No | Check server status |
+| GET | `/v1/models` | API key | Get available models for the key |
+| POST | `/v1/chat/completions` | API key | Chat, image generate/edit, video generate (depends on model) |
+| GET | `/api/files/video/{name}` | No | Get cached video file from generated URL |
 
-Catatan:
-- Tidak ada endpoint terpisah khusus image/video. Media generation dipanggil lewat `POST /v1/chat/completions` menggunakan model media.
-- URL video hasil generate biasanya sudah dalam bentuk URL absolut ke `/api/files/video/{name}`.
+Notes:
+- There is no separate endpoint specifically for image/video. Media generation is called via `POST /v1/chat/completions` using media models.
+- The generated video URL is usually already an absolute URL to `/api/files/video/{name}`.
 
-## 3. Model Yang Tersedia (Live Saat Ini)
+## 3. Available Models (Currently Live)
 
-Berikut hasil `GET /v1/models` pada environment ini saat dokumen dibuat:
+Here is the result of `GET /v1/models` in this environment when this document was created:
 
-| Model ID | Kategori |
+| Model ID | Category |
 | --- | --- |
 | `grok-3` | Chat |
 | `grok-3-mini` | Chat |
@@ -55,9 +55,9 @@ Berikut hasil `GET /v1/models` pada environment ini saat dokumen dibuat:
 | `grok-imagine-1.0-edit` | Image edit |
 | `grok-imagine-1.0-video` | Video generate |
 
-Catatan penting:
-- Daftar ini dinamis mengikuti konfigurasi `token.basic_models` dan `token.super_models`.
-- Jika API key punya `model_whitelist`, hasil akhirnya bisa lebih sedikit.
+Important notes:
+- This list is dynamic according to the `token.basic_models` and `token.super_models` configuration.
+- If the API key has a `model_whitelist`, the final result may be fewer.
 
 ## 4. GET /v1/models
 
@@ -68,7 +68,7 @@ GET /v1/models HTTP/1.1
 Authorization: Bearer gf-xxxxxxxxxxxxxxxx
 ```
 
-### Response sukses
+### Success Response
 
 ```json
 {
@@ -84,81 +84,81 @@ Authorization: Bearer gf-xxxxxxxxxxxxxxxx
 }
 ```
 
-## 5. POST /v1/chat/completions (Endpoint Utama)
+## 5. POST /v1/chat/completions (Main Endpoint)
 
-## 5.1 Field Request Umum
+## 5.1 Common Request Fields
 
-| Field | Tipe | Wajib | Default | Keterangan |
+| Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `model` | string | Ya | - | Model target |
-| `messages` | array | Ya | - | Riwayat percakapan / multimodal blocks |
-| `stream` | bool | Tidak | Mengikuti config `app.stream` | `true` untuk SSE stream |
-| `temperature` | number | Tidak | `0.8` | Range `0` s.d. `2` |
-| `top_p` | number | Tidak | `0.95` | Range `0` s.d. `1` |
-| `max_tokens` | int | Tidak | - | Batas output token untuk chat |
-| `reasoning_effort` | string | Tidak | - | `none|minimal|low|medium|high|xhigh` |
-| `tools` | array | Tidak | - | Tool definitions untuk tool-calling |
-| `tool_choice` | string/object | Tidak | - | `auto|required|none` atau object function |
-| `parallel_tool_calls` | bool | Tidak | `true` | Paralel tool calls |
-| `image_config` | object | Tidak | Tergantung model | Dipakai model image |
-| `video_config` | object | Tidak | Tergantung model | Dipakai model video |
+| `model` | string | Yes | - | Target model |
+| `messages` | array | Yes | - | Conversation history / multimodal blocks |
+| `stream` | bool | No | Follows `app.stream` config | `true` for SSE stream |
+| `temperature` | number | No | `0.8` | Range `0` to `2` |
+| `top_p` | number | No | `0.95` | Range `0` to `1` |
+| `max_tokens` | int | No | - | Token output limit for chat |
+| `reasoning_effort` | string | No | - | `none|minimal|low|medium|high|xhigh` |
+| `tools` | array | No | - | Tool definitions for tool-calling |
+| `tool_choice` | string/object | No | - | `auto|required|none` or object function |
+| `parallel_tool_calls` | bool | No | `true` | Parallel tool calls |
+| `image_config` | object | No | Depends on model | Used by image models |
+| `video_config` | object | No | Depends on model | Used by video models |
 
-Validasi penting:
-- `model` wajib ada.
-- `messages` tidak boleh kosong.
-- `message.content` tidak boleh null/kosong.
+Important validations:
+- `model` is required.
+- `messages` cannot be empty.
+- `message.content` cannot be null/empty.
 
-## 5.2 Format messages (text + image)
+## 5.2 messages Format (text + image)
 
-### A. Bentuk text sederhana
+### A. Simple text format
 
 ```json
 {
   "role": "user",
-  "content": "Buatkan poster neon cyberpunk"
+  "content": "Create a cyberpunk neon poster"
 }
 ```
 
-### B. Bentuk multimodal blocks (disarankan untuk image edit/video reference)
+### B. Multimodal blocks format (recommended for image edit/video reference)
 
 ```json
 {
   "role": "user",
   "content": [
-    { "type": "text", "text": "Ubah gaya jadi cinematic" },
+    { "type": "text", "text": "Change style to cinematic" },
     { "type": "image_url", "image_url": { "url": "data:image/png;base64,...." } }
   ]
 }
 ```
 
-Rule block yang diterima pada role `user`:
+Supported block rules on the `user` role:
 
-| `type` | Keterangan |
+| `type` | Description |
 | --- | --- |
-| `text` | Teks prompt |
-| `image_url` | URL gambar / data URI base64 |
-| `input_audio` | Input audio (format block validasi tersedia) |
-| `file` | File input (format block validasi tersedia) |
+| `text` | Text prompt |
+| `image_url` | Image URL / base64 data URI |
+| `input_audio` | Audio input (validation block format available) |
+| `file` | File input (validation block format available) |
 
-Untuk role selain `user`, konten block yang didukung adalah `text`.
+For roles other than `user`, the supported block content is `text`.
 
 ## 6. Image API via Chat Completions
 
-Gunakan model:
+Use models:
 - `grok-imagine-1.0`
 - `grok-imagine-1.0-fast`
 - `grok-imagine-1.0-edit`
 
 ### 6.1 image_config
 
-| Field | Tipe | Default | Batasan |
+| Field | Type | Default | Constraints |
 | --- | --- | --- | --- |
-| `n` | int | `1` | `1` s.d. `10` |
-| `size` | string | `1024x1024` | Hanya nilai yang diizinkan (lihat tabel size) |
-| `response_format` | string | `b64_json` | Saat ini dinormalisasi paksa ke `b64_json` |
-| `enable_nsfw` | bool | mengikuti sistem | Flag opsional NSFW |
+| `n` | int | `1` | `1` to `10` |
+| `size` | string | `1024x1024` | Only permitted values (see size table) |
+| `response_format` | string | `b64_json` | Currently forced normalized to `b64_json` |
+| `enable_nsfw` | bool | follows system | Optional NSFW flag |
 
-### 6.2 Size Image yang Diizinkan
+### 6.2 Permitted Image Sizes
 
 | Size |
 | --- |
@@ -168,14 +168,14 @@ Gunakan model:
 | `1280x720` |
 | `720x1280` |
 
-Catatan stream untuk image:
-- Jika `stream=true`, maka `image_config.n` hanya boleh `1` atau `2`.
+Stream notes for images:
+- If `stream=true`, then `image_config.n` can only be `1` or `2`.
 
-### 6.3 Khusus model edit
+### 6.3 Specific for edit model
 
-Model `grok-imagine-1.0-edit` membutuhkan minimal 1 gambar dari block `image_url` di messages user.
+The `grok-imagine-1.0-edit` model requires at least 1 image from the `image_url` block in user messages.
 
-## 6.4 Contoh request image generate
+## 6.4 Example generate image request
 
 ```json
 {
@@ -195,7 +195,7 @@ Model `grok-imagine-1.0-edit` membutuhkan minimal 1 gambar dari block `image_url
 }
 ```
 
-## 6.5 Contoh request image edit
+## 6.5 Example edit image request
 
 ```json
 {
@@ -219,38 +219,38 @@ Model `grok-imagine-1.0-edit` membutuhkan minimal 1 gambar dari block `image_url
 
 ## 7. Video API via Chat Completions
 
-Gunakan model:
+Use model:
 - `grok-imagine-1.0-video`
 
 ### 7.1 video_config
 
-| Field | Tipe | Default | Batasan |
+| Field | Type | Default | Constraints |
 | --- | --- | --- | --- |
-| `aspect_ratio` | string | `3:2` | Lihat nilai valid di bawah |
-| `video_length` | int | `6` | `6` s.d. `30` detik |
-| `resolution_name` | string | `480p` | `480p` atau `720p` |
+| `aspect_ratio` | string | `3:2` | See valid values below |
+| `video_length` | int | `6` | `6` to `30` seconds |
+| `resolution_name` | string | `480p` | `480p` or `720p` |
 | `preset` | string | `custom` | `custom|fun|normal|spicy` |
 
-### 7.2 Aspect Ratio yang Diterima
+### 7.2 Accepted Aspect Ratios
 
-Bisa pakai ratio atau alias size berikut:
+Can use the following ratios or size aliases:
 
-| Input diterima | Dinormalisasi menjadi |
+| Accepted input | Normalized to |
 | --- | --- |
-| `16:9` atau `1280x720` | `16:9` |
-| `9:16` atau `720x1280` | `9:16` |
-| `3:2` atau `1792x1024` | `3:2` |
-| `2:3` atau `1024x1792` | `2:3` |
-| `1:1` atau `1024x1024` | `1:1` |
+| `16:9` or `1280x720` | `16:9` |
+| `9:16` or `720x1280` | `9:16` |
+| `3:2` or `1792x1024` | `3:2` |
+| `2:3` or `1024x1792` | `2:3` |
+| `1:1` or `1024x1024` | `1:1` |
 
-### 7.3 Mapping Resolution + Ratio ke Size Internal
+### 7.3 Resolution + Ratio Mapping to Internal Size
 
-Server menghitung size internal dari rumus:
-- tinggi = `480` untuk `480p`
-- tinggi = `720` untuk `720p`
-- lebar = `tinggi * rasio_w / rasio_h` (integer)
+The server calculates the internal size from the formula:
+- height = `480` for `480p`
+- height = `720` for `720p`
+- width = `height * ratio_w / ratio_h` (integer)
 
-| resolution_name | aspect_ratio | size internal |
+| resolution_name | aspect_ratio | internal size |
 | --- | --- | --- |
 | `480p` | `16:9` | `853x480` |
 | `480p` | `9:16` | `270x480` |
@@ -263,7 +263,7 @@ Server menghitung size internal dari rumus:
 | `720p` | `2:3` | `480x720` |
 | `720p` | `1:1` | `720x720` |
 
-### 7.4 Preset yang Didukung
+### 7.4 Supported Presets
 
 | Preset |
 | --- |
@@ -272,11 +272,11 @@ Server menghitung size internal dari rumus:
 | `normal` |
 | `spicy` |
 
-### 7.5 Reference image untuk video
+### 7.5 Reference image for video
 
-Jika ada block `image_url` pada message user, server menggunakan gambar pertama sebagai `reference_image`.
+If there is an `image_url` block in the user message, the server uses the first image as the `reference_image`.
 
-### 7.6 Contoh request video
+### 7.6 Example video request
 
 ```json
 {
@@ -303,7 +303,7 @@ Jika ada block `image_url` pada message user, server menggunakan gambar pertama 
 
 ### 8.1 Non-stream (`stream=false`)
 
-Response shape OpenAI-compatible:
+OpenAI-compatible shape response:
 
 ```json
 {
@@ -329,40 +329,40 @@ Response shape OpenAI-compatible:
 }
 ```
 
-Catatan output media:
-- Image biasanya dikembalikan sebagai markdown image dengan data URI base64.
-- Video dikembalikan sebagai markdown link `[video](...)`.
+Media output notes:
+- Images are typically returned as markdown images with a base64 data URI.
+- Videos are returned as a markdown link `[video](...)`.
 
 ### 8.2 Stream (`stream=true`)
 
 - Content-Type: SSE
 - Format: `chat.completion.chunk`
-- Akhir stream: `data: [DONE]`
+- End of stream: `data: [DONE]`
 
-## 9. Error Codes Penting
+## 9. Important Error Codes
 
-| HTTP | code | Kapan terjadi |
+| HTTP | code | When it occurs |
 | --- | --- | --- |
-| 400 | `invalid_json` | JSON request rusak |
-| 400 | `missing_model` | field `model` kosong |
-| 400 | `invalid_messages` | messages kosong/tidak valid |
-| 400 | `invalid_temperature` | di luar `0..2` |
-| 400 | `invalid_top_p` | di luar `0..1` |
-| 400 | `invalid_image_config` | image_config tidak valid |
-| 400 | `invalid_video_config` | video_config tidak valid |
-| 400 | `missing_prompt` | prompt kosong untuk image/video |
-| 400 | `missing_image` | image edit tanpa image_url |
-| 401 | `invalid_api_key` | API key kosong/tidak valid/inactive/expired |
-| 403 | `model_not_allowed` | model tidak masuk whitelist API key |
-| 403 | `media_generation_disabled` | fitur media dimatikan admin |
-| 404 | `model_not_found` | model tidak ada di config model pool |
-| 429 | `rate_limit_exceeded` | limit per menit API key terlampaui |
-| 429 | `daily_limit_exceeded` | kuota harian API key habis |
+| 400 | `invalid_json` | Broken JSON request |
+| 400 | `missing_model` | `model` field is empty |
+| 400 | `invalid_messages` | messages empty/invalid |
+| 400 | `invalid_temperature` | outside `0..2` |
+| 400 | `invalid_top_p` | outside `0..1` |
+| 400 | `invalid_image_config` | invalid image_config |
+| 400 | `invalid_video_config` | invalid video_config |
+| 400 | `missing_prompt` | empty prompt for image/video |
+| 400 | `missing_image` | image edit without image_url |
+| 401 | `invalid_api_key` | API key empty/invalid/inactive/expired |
+| 403 | `model_not_allowed` | model is not in API key whitelist |
+| 403 | `media_generation_disabled` | media feature disabled by admin |
+| 404 | `model_not_found` | model is not in model pool config |
+| 429 | `rate_limit_exceeded` | per-minute API key limit exceeded |
+| 429 | `daily_limit_exceeded` | daily API key quota exhausted |
 
-## 10. Catatan Integrasi Frontend Studio
+## 10. Studio Frontend Integration Notes
 
-- Selalu panggil `GET /v1/models` saat app load untuk sinkron model real-time.
-- Untuk tab video, filter model `grok-imagine-1.0-video`.
-- Untuk tab image, gunakan `grok-imagine-1.0`, `grok-imagine-1.0-fast`, `grok-imagine-1.0-edit`.
-- Simpan API key per user/session, jangan hardcode di source frontend.
-- Tampilkan pesan error berdasarkan `error.code` agar UX lebih jelas.
+- Always call `GET /v1/models` on app load to sync models in real-time.
+- For the video tab, filter for the `grok-imagine-1.0-video` model.
+- For the image tab, use `grok-imagine-1.0`, `grok-imagine-1.0-fast`, `grok-imagine-1.0-edit`.
+- Store the API key per user/session, do not hardcode in the frontend source.
+- Display error messages based on `error.code` so the UX is clearer.

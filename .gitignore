@@ -13,6 +13,7 @@ bugs.md
 docs/design/
 docs/grok2api-callchain-diff.md
 docs/origin_error_handle.md
+docs/deploy-cliproxy.md
 poc/
 # scripts/ (unignored to allow pushing admin scripts)
 

@@ -1,92 +1,92 @@
-# Panduan Deployment GrokPi Lite - Production Ready
+# GrokPi Lite Deployment Guide - Production Ready
 
-Panduan ini disusun secara komprehensif mulai dari nol (server baru), pengamanan dasar (hardening), hingga siap digunakan di tahap produksi dengan custom domain (HTTPS).
+This guide is comprehensively structured from scratch (new server), basic security (hardening), to being ready to use in a production stage with a custom domain (HTTPS).
 
-Untuk alur ringkas yang bisa diikuti langkah demi langkah, gunakan juga checklist terpisah:
+For a brief, step-by-step flow, also use the separate checklists:
 
-- [Checklist Deployment Final ke VPS Ubuntu](deployment-checklist-ubuntu.md)
-- [Checklist Deployment Lokal (Docker)](deployment-checklist-lokal.md)
+- [Final Deployment Checklist to Ubuntu VPS](deployment-checklist-ubuntu.md)
+- [Local Deployment Checklist (Docker)](deployment-checklist-lokal.md)
 
-> **Catatan Konsistensi**: Baik lokal maupun VPS menggunakan Docker sebagai metode deployment utama.
-> `Dockerfile.local` menggunakan multi-stage build sehingga tidak memerlukan Go toolchain di mesin host.
+> **Consistency Note**: Both local and VPS use Docker as the main deployment method.
+> `Dockerfile.local` uses a multi-stage build, so it does not require a Go toolchain on the host machine.
 
-## 1. Persyaratan Server Minimal
+## 1. Minimum Server Requirements
 
-GrokPi dibangun menggunakan bahasa Go yang sangat ringan dan tidak memerlukan banyak *resource*. Berikut adalah rekomendasi VPS (Virtual Private Server) yang Anda butuhkan:
+GrokPi is built using the highly lightweight Go language and does not require many *resources*. Here are the recommended VPS (Virtual Private Server) specifications you need:
 
-*   **Operating System**: Ubuntu 22.04 LTS atau 24.04 LTS (Debian 12 juga didukung).
-*   **CPU**: Minimal 1 vCPU.
-*   **RAM**: Minimal 1 GB (Idealnya 2 GB).
+*   **Operating System**: Ubuntu 22.04 LTS or 24.04 LTS (Debian 12 is also supported).
+*   **CPU**: Minimum 1 vCPU.
+*   **RAM**: Minimum 1 GB (Ideally 2 GB).
 *   **Storage**: 10 GB SSD.
-*   **Akses**: IPv4 Publik.
+*   **Access**: Public IPv4.
 
 ---
 
-## 2. Persiapan Server Dari Nol (Init & Hardening)
+## 2. Server Preparation from Scratch (Init & Hardening)
 
-Saat pertama kali menyewa VPS, Anda biasanya akan mendapatkan kredensial login sebagai `root`. Menjalankan aplikasi langsung sebagai `root` sangat berbahaya. Ikuti langkah di bawah untuk menyiapkan fondasi yang aman.
+When first renting a VPS, you will usually get login credentials as `root`. Running applications directly as `root` is very dangerous. Follow the steps below to set up a secure foundation.
 
-### 2.1. Login Pertama & Update Sistem
-Akses server menggunakan Terminal / PowerShell:
+### 2.1. First Login & System Update
+Access the server using Terminal / PowerShell:
 ```bash
-ssh root@IP_SERVER_ANDA
+ssh root@YOUR_SERVER_IP
 ```
-Segera perbarui sistem:
+Immediately update the system:
 ```bash
 apt-get update && apt-get upgrade -y
 ```
 
-### 2.2. Membuat User Baru
-Kita akan menjalankan aplikasi menggunakan user standar dengan hak akses admin (sudo).
+### 2.2. Create a New User
+We will run the application using a standard user with admin access rights (sudo).
 ```bash
-# Membuat user baru bernama "grokdeploy" (Anda bebas mengubah namanya)
+# Create a new user named "grokdeploy" (you are free to change its name)
 adduser grokdeploy
 
-# Menambahkan user ke dalam grup sudo agar bisa mengeksekusi perintah admin
+# Add the user to the sudo group so they can execute admin commands
 usermod -aG sudo grokdeploy
 ```
 
-### 2.3. Menambahkan Swap (Penting untuk RAM 1GB / 2GB)
-Menambahkan Swap akan menyelamatkan server dari *crash/Out of Memory* saat ada lonjakan data.
+### 2.3. Add Swap (Important for 1GB / 2GB RAM)
+Adding Swap will save the server from *crashes/Out of Memory* when there are data spikes.
 ```bash
-# Membuat file swap sebesar 2GB
+# Create a 2GB swap file
 fallocate -l 2G /swapfile
 chmod 600 /swapfile
 mkswap /swapfile
 swapon /swapfile
 
-# Menjadikan swap permanen setiap server restart
+# Make the swap permanent across server restarts
 echo '/swapfile none swap sw 0 0' | tee -a /etc/fstab
 ```
 
-### 2.4. Keamanan Dasar: UFW (Firewall)
-Pastikan hanya port yang benar-benar kita gunakan (SSH, HTTP, HTTPS) yang bisa diakses dunia luar.
+### 2.4. Basic Security: UFW (Firewall)
+Ensure only the ports we actually use (SSH, HTTP, HTTPS) can be accessed from the outside world.
 ```bash
-# Instal ufw jika belum ada (Ubuntu biasanya sudah bawaan)
+# Install ufw if it's not already present (Ubuntu usually has it built-in)
 apt-get install ufw -y
 
-# Buka akses OpenSSH sebelum menyalakan firewall agar tidak terkunci!
+# Open OpenSSH access before enabling the firewall to avoid lockouts!
 ufw allow OpenSSH
 ufw allow 80/tcp
 ufw allow 443/tcp
 ufw deny 8080/tcp
 ufw deny 8191/tcp
 
-# Aktifkan firewall
+# Enable the firewall
 ufw enable
 ```
-Ketik `y` dan tekan Enter untuk mengaktifkan.
+Type `y` and press Enter to effectively enable it.
 
-### 2.5. Switch ke User Baru
-Tutup koneksi root atau *switch* langsung ke user yang baru Anda daftarkan:
+### 2.5. Switch to the New User
+Close the root connection or *switch* directly to the user you just registered:
 ```bash
 su - grokdeploy
 ```
-*(Seluruh langkah di bawah ini akan dijalankan sebagai user `grokdeploy`)*
+*(All the steps below will be run as the `grokdeploy` user)*
 
 ---
 
-## 3. Instalasi Dependensi (Docker & Go)
+## 3. Installing Dependencies (Docker & Go)
 
 ### 3.1. Install *Requirement Tools*
 ```bash
@@ -94,29 +94,29 @@ sudo apt-get install -y ca-certificates curl gnupg lsb-release git make
 ```
 
 ### 3.2. Install Docker & Docker Compose
-GrokPi menggunakan Docker untuk mengkarantina dependensi (seperti proxy/flaresolverr jika digunakan).
+GrokPi uses Docker to quarantine dependencies (like proxy/flaresolverr if used).
 ```bash
-# Tambahkan repo key Docker
+# Add the Docker repo key
 sudo install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-# Masukkan Docker ke sources.list
+# Add Docker to the sources.list
 echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
   $(. /etc/os-release && echo $VERSION_CODENAME) stable" | \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 sudo apt-get update
-# Install Engine
+# Install the Engine
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-# Masukkan user grokdeploy ke grup docker agar tidak perlu `sudo` saat docker-compose
+# Add the grokdeploy user to the docker group to avoid needing `sudo` with docker-compose
 sudo usermod -aG docker $USER
 ```
-**PENTING**: *Logout* dan *Login* kembali ke server SSH via `ssh grokdeploy@IP_SERVER_ANDA` agar konfigurasi grup docker teraplikasi.
+**IMPORTANT**: *Logout* and *Login* back into the server via SSH as `ssh grokdeploy@YOUR_SERVER_IP` so the docker group configuration applies.
 
-### 3.3. Install Golang 1.24+ (Untuk Build API)
+### 3.3. Install Golang 1.24+ (To Build API)
 ```bash
 sudo rm -rf /usr/local/go
 curl -fsSL "https://go.dev/dl/go1.24.1.linux-amd64.tar.gz" -o /tmp/go.tar.gz
@@ -124,57 +124,57 @@ sudo tar -C /usr/local -xzf /tmp/go.tar.gz
 echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
 source ~/.bashrc
 ```
-Cek versi (pastikan muncul v1.24.x): `go version`.
+Check the version (ensure v1.24.x appears): `go version`.
 
 ---
 
-## 4. Instalasi GrokPi Lite
+## 4. Install GrokPi Lite
 
-Sekarang Anda sudah siap mengatur mesin inti.
+Now you are ready to set up the core machine.
 
-### 4.1. Clone Repositori
+### 4.1. Clone the Repository
 ```bash
-# Pindah ke direktori utama user
+# Move to the user's home directory
 cd ~
 git clone https://github.com/startquick/GrokPi-Lite.git
 cd GrokPi-Lite
 ```
 
-### 4.2. Setup Konfigurasi `config.toml`
-Salin template bawaan:
+### 4.2. Setup the `config.toml` Configuration
+Copy the built-in template:
 ```bash
 cp config.defaults.toml config.toml
 nano config.toml
 ```
-Pastikan Anda **mengganti** `app_key` dengan kata sandi admin yang aman dan sulit ditebak. *(Contoh: `app_key = "P4ssw0rd$S4ng@tKu4t!"`)*. Setelah diedit, save (Ctrl+O, Enter, Ctrl+X).
+Ensure you **replace** `app_key` with an admin password that is secure and hard to guess. *(Example: `app_key = "V3ryStr0ng$P4ssw0rd!"`)*. After editing, save (Ctrl+O, Enter, Ctrl+X).
 
-### 4.3. Jalankan Docker
-Docker script pada repo ini menggunakan **multi-stage build** - binary Go dikompilasi di dalam container, tidak perlu `make build` terlebih dahulu:
+### 4.3. Run Docker
+The Docker script in this repo uses a **multi-stage build** - the Go binary is compiled inside the container, no need for `make build` beforehand:
 
 ```bash
-# 1. Buat folder database dan tetapkan hak akses agar docker write-able
+# 1. Create database folders and set permissions to be docker writeable
 mkdir -p data logs
 sudo chown -R 1000:1000 data logs
 
-# 2. Jalankan Kontainer (service hanya bind ke localhost)
+# 2. Run the Container (the service only binds to localhost)
 docker compose up -d --build
 ```
-Lakukan tes ringan apakah server berjalan di internal: `curl -s http://127.0.0.1:8080/health`.
+Perform a quick test to see if the server is running internally: `curl -s http://127.0.0.1:8080/health`.
 
 ---
 
-## 5. Custom Domain (Reverse Proxy & SSL HTTPS)
+## 5. Custom Domain (Reverse Proxy & HTTPS SSL)
 
-Agar *client* dapat mengkoneksikan server Anda via SSL (`https://api.domainanda.com`), Anda dapat menggunakan Caddy Server. Caddy jauh lebih disarankan ketimbang NGINX karena akan secara *otomatis* menerbitkan dan merotasi sertifikat SSL secara gratis!
+So that *clients* can connect to your server via SSL (`https://api.yourdomain.com`), you can use the Caddy Server. Caddy is highly recommended over NGINX as it will *automatically* issue and rotate SSL certificates for free!
 
-### 5.1. Persiapan Domain (A Record)
-Masuk ke pengaturan Cloudflare / Provider DNS Domain Anda:
-- Buat tipe **A Record** (Misal: `api.namadomain.com`)
-- Target **IP Address**: Isi dengan IP VPS Anda.
-- **PENTING JIKA PAKAI CLOUDFLARE**: Pastikan status awan/cloud berwarna abu-abu (*Proxy Status: DNS Only*) saat instalasi perdana Caddy.
+### 5.1. Domain Preparation (A Record)
+Log into the settings of Cloudflare / your Domain DNS Provider:
+- Create an **A Record** type (e.g.: `api.domainname.com`)
+- Target **IP Address**: Fill with your VPS IP.
+- **IMPORTANT IF USING CLOUDFLARE**: Ensure the cloud status is grey (*Proxy Status: DNS Only*) during the initial Caddy installation.
 
 ### 5.2. Install Caddy Server
-Jalankan satu-satu perintah di bawah ini:
+Run the commands below one by one:
 ```bash
 sudo apt-get install -y debian-keyring debian-archive-keyring apt-transport-https
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
@@ -183,59 +183,59 @@ sudo apt-get update
 sudo apt-get install caddy
 ```
 
-### 5.3. Hubungkan Caddy dengan GrokPi
-Buka file Caddyfile bawaan sistem:
+### 5.3. Connect Caddy with GrokPi
+Open the system default Caddyfile:
 ```bash
 sudo nano /etc/caddy/Caddyfile
 ```
-Kosongkan semua isi file tersebut (atau hapus yang tidak penting), dan masukkan blok kode di bawah ini. Ganti `api.namadomain.com` dengan domain Anda yang asli:
+Empty all the file's contents (or delete what's not important), and insert the code block below. Replace `api.domainname.com` with your real domain:
 
 ```text
-api.namadomain.com {
+api.domainname.com {
     reverse_proxy 127.0.0.1:8080
 }
 ```
-Simpan file (Ctrl+O, Enter, Ctrl+X), lalu *restart* service:
+Save the file (Ctrl+O, Enter, Ctrl+X), then *restart* the service:
 ```bash
 sudo systemctl restart caddy
 ```
-Caddy akan memakan waktu sekitar ~10 detik untuk memesan sertifikat dari Let's Encrypt / ZeroSSL.
+Caddy will take about ~10 seconds to order a certificate from Let's Encrypt / ZeroSSL.
 
-Selamat! Server GrokPi Lite Anda kini live di public network via `https://api.namadomain.com`!
+Congratulations! Your GrokPi Lite server is now live on the public network via `https://api.domainname.com`!
 
-Catatan penting:
-- `docker-compose.yml` hanya bind GrokPi ke `127.0.0.1:8080`, jadi akses publik harus melalui Caddy.
-- FlareSolverr tidak dipublish ke host dan hanya tersedia di internal Docker network.
-- Container akan gagal start jika `config.toml` belum dimount atau masih memakai `app_key` default.
+Important notes:
+- `docker-compose.yml` only binds GrokPi to `127.0.0.1:8080`, so public access must proceed through Caddy.
+- FlareSolverr is not published to the host and is only available on the internal Docker network.
+- The container will fail to start if `config.toml` isn't mounted or still uses the default `app_key`.
 
 ---
 
-## 6. Operasional Harian (Maintenance)
+## 6. Daily Operations (Maintenance)
 
-Seluruh token, api keys, dan quota Grok disimpan secara transparan di `/data/grokpi.db` dengan driver SQLite.
+All tokens, API keys, and Grok quotas are stored transparently in `/data/grokpi.db` with the SQLite driver.
 
-### 6.1. Pengaturan Token Admin (CLI via SSH)
-Kapanpun Anda butuh menambah/menghapus token x.com, atau menerbitkan API Keys untuk user *client*, gunakan skrip bawaan:
+### 6.1. Admin Token Settings (CLI via SSH)
+Whenever you need to add/remove x.com tokens, or issue API Keys for user *clients*, use the built-in script:
 ```bash
 cd ~/GrokPi-Lite
 chmod +x ./scripts/linux/grokpi_admin.sh
 ./scripts/linux/grokpi_admin.sh
 ```
 
-### 6.2. Cadangkan Database (Backup)
-Melakukan backup sangat mudah, cukup gabungkan konfigurasi dan folder data menjadi satu archive:
+### 6.2. Database Backup
+Performing a backup is very easy, simply package the configuration and data folder into a single archive:
 ```bash
 cd ~/GrokPi-Lite
 tar czf grokpi-backup-$(date +%F).tar.gz config.toml data/
 ```
 
-### 6.3. Update Aplikasi Utama
-Bila Anda mendapat notifikasi pembaruan di Github:
+### 6.3. Updating the Main Application
+When you receive an update notification on Github:
 ```bash
 cd ~/GrokPi-Lite
 git pull
 docker compose build --no-cache grokpi
 docker compose up -d
 ```
-Perintah `build --no-cache` memastikan image di-recompile murni dari awal menggunakan layer multi-stage terbaru.
-Jika Anda menyimpan perubahan lokal pada `config.toml` atau file deploy lain, backup dulu sebelum update dan selesaikan konflik Git secara manual.
+The command `build --no-cache` ensures that the image is purely recompiled from scratch using the newest multi-stage layer.
+If you kept local changes in `config.toml` or other deploy files, back them up before updating, and resolve the Git conflicts manually.
