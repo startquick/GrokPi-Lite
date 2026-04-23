@@ -327,7 +327,7 @@ code {
 
 /* Tables */
 .table-wrap {
-  overflow-x: auto;
+  overflow: visible;
   border-radius: 12px;
   border: 1px solid var(--border);
   background-color: var(--bg-surface);
@@ -337,7 +337,6 @@ table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  min-width: 800px;
 }
 
 th {
