@@ -320,7 +320,7 @@ async function refreshUsage() {
 
   // Reload logs table
   try {
-    const res = await req('/admin/usage/logs?page_size=50');
+    const res = await req('/admin/usage/logs?page_size=20');
     const tbody = document.getElementById('usageLogsBody');
     if (!res.data || !res.data.length) { tbody.innerHTML = '<tr><td colspan="7" class="muted">No logs found.</td></tr>'; return; }
     

@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -337,12 +337,10 @@ code {
 
 /* Tables */
 .table-wrap {
+  overflow-x: auto;
   border-radius: 12px;
   border: 1px solid var(--border);
   background-color: var(--bg-surface);
-}
-@media (max-width: 850px) {
-  .table-wrap { overflow-x: auto; }
 }
 
 table {
@@ -1156,7 +1154,7 @@ async function refreshUsage() {
 
   // Reload logs table
   try {
-    const res = await req('/admin/usage/logs?page_size=50');
+    const res = await req('/admin/usage/logs?page_size=20');
     const tbody = document.getElementById('usageLogsBody');
     if (!res.data || !res.data.length) { tbody.innerHTML = '<tr><td colspan="7" class="muted">No logs found.</td></tr>'; return; }
     
@@ -1269,8 +1267,8 @@ function doRegenKey(id) {
       try {
         const r = await req(`/admin/apikeys/${id}/regenerate`, { method: 'POST' });
         openModal({
-          title: 'Key Regenerated',
-          msg: 'Please update your clients with the new secret key. You will not be able to view it again.',
+          title: 'Key Regenerated', 
+          msg: 'Please update your clients with the new secret key. You will not be able to view it again.', 
           fields: [{ key: 'newKey', label: 'Secret Key', value: r.key, readonly: true }],
           confirmTxt: 'Close',
           onConfirm: () => {}
@@ -1369,8 +1367,8 @@ document.getElementById('keyCreateForm').addEventListener('submit', async e => {
     const res = await req('/admin/apikeys', { method:'POST', body: JSON.stringify({ name, rate_limit: rate, daily_limit: daily }) });
     document.getElementById('keyNameInput').value = '';
     openModal({
-      title: 'API Key Generated',
-      msg: 'Please store this key securely. You will not be able to view it again.',
+      title: 'API Key Generated', 
+      msg: 'Please store this key securely. You will not be able to view it again.', 
       fields: [{ key: 'newKey', label: 'Secret Key', value: res.key, readonly: true }],
       confirmTxt: 'Close',
       onConfirm: () => {}
