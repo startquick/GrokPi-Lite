@@ -270,6 +270,9 @@ func (s *Server) setupRoutes() {
 				r.Get("/usage/logs", handleUsageLogs(s.usageLogStore))
 			}
 
+			// Model catalog endpoint (runtime-only — Docker is the only deployment method)
+			r.Get("/models", handleAdminModels(s.runtime))
+
 			// API Key management endpoints
 			if s.apiKeyStore != nil {
 				r.Route("/apikeys", func(r chi.Router) {
