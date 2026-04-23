@@ -31,6 +31,10 @@ data/
 # Config (user-specific)
 config.toml
 
+# Docker local overrides
+.env
+docker-compose.local.yml
+
 # IDE
 .idea/
 .vscode/

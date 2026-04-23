@@ -5,6 +5,10 @@ Panduan ini disusun secara komprehensif mulai dari nol (server baru), pengamanan
 Untuk alur ringkas yang bisa diikuti langkah demi langkah, gunakan juga checklist terpisah:
 
 - [Checklist Deployment Final ke VPS Ubuntu](deployment-checklist-ubuntu.md)
+- [Checklist Deployment Lokal (Docker)](deployment-checklist-lokal.md)
+
+> **Catatan Konsistensi**: Baik lokal maupun VPS menggunakan Docker sebagai metode deployment utama.
+> `Dockerfile.local` menggunakan multi-stage build sehingga tidak memerlukan Go toolchain di mesin host.
 
 ## 1. Persyaratan Server Minimal
 
@@ -144,18 +148,15 @@ nano config.toml
 ```
 Pastikan Anda **mengganti** `app_key` dengan kata sandi admin yang aman dan sulit ditebak. *(Contoh: `app_key = "P4ssw0rd$S4ng@tKu4t!"`)*. Setelah diedit, save (Ctrl+O, Enter, Ctrl+X).
 
-### 4.3. Build Golang & Jalankan Docker
-Docker script pada repo kita membutuhkan file *binary* sistem Linux yang sudah dicompile, oleh karena itu *build* dahulu:
+### 4.3. Jalankan Docker
+Docker script pada repo ini menggunakan **multi-stage build** - binary Go dikompilasi di dalam container, tidak perlu `make build` terlebih dahulu:
 
 ```bash
-# 1. Kompilasi app Goken
-make build
-
-# 2. Buat folder database dan tetapkan hak ases agar docker write-able
+# 1. Buat folder database dan tetapkan hak akses agar docker write-able
 mkdir -p data logs
 sudo chown -R 1000:1000 data logs
 
-# 3. Jalankan Kontainer (service hanya bind ke localhost)
+# 2. Jalankan Kontainer (service hanya bind ke localhost)
 docker compose up -d --build
 ```
 Lakukan tes ringan apakah server berjalan di internal: `curl -s http://127.0.0.1:8080/health`.
@@ -233,7 +234,7 @@ Bila Anda mendapat notifikasi pembaruan di Github:
 ```bash
 cd ~/GrokPi-Lite
 git pull
-make build
 docker compose up -d --build
 ```
-Jika Anda menyimpan perubahan lokal pada `config.toml` atau file deploy lain, backup dulu sebelum update dan selesaikan konflik Git secara manual. Hindari perintah destruktif yang membuang perubahan server.
+Perintah `--build` akan otomatis rebuild image dengan kode terbaru — tidak perlu `make build` manual.
+Jika Anda menyimpan perubahan lokal pada `config.toml` atau file deploy lain, backup dulu sebelum update dan selesaikan konflik Git secara manual.

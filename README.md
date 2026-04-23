@@ -15,13 +15,13 @@ Panduan ini berfokus pada self-hosting di server atau VPS milik sendiri.
 
 ## 2. Kebutuhan Sistem & Deployment
 
-Panduan lengkap mengenai spesifikasi VPS, instalasi dependensi (Docker, Go, Make), hingga perintah eksekusi dan *deployment* kini tersedia di dokumen terpisah agar lebih rapi.
+GrokPi di-deploy menggunakan **Docker Compose** — baik di lokal maupun VPS. Tidak perlu Go toolchain di mesin host; build binary terjadi di dalam container via multi-stage build.
 
-Checklist praktis Ubuntu VPS juga tersedia di:
+Panduan lengkap tersedia di dokumen terpisah:
 
-`docs/deployment-checklist-ubuntu.md`
-
-👉 **[Baca Panduan Deployment Lengkap di Sini](docs/deployment.md)**
+- 👉 **[Checklist Deployment Lokal (Windows)](docs/deployment-checklist-lokal.md)**
+- 👉 **[Checklist Deployment VPS Ubuntu](docs/deployment-checklist-ubuntu.md)**
+- 👉 **[Panduan Deployment Lengkap](docs/deployment.md)**
 
 
 

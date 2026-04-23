@@ -14,23 +14,25 @@
 ## Token & Quota Architecture (Latest)
 - **Automatic Priority Tiers**: When an admin imports Grok SSO tokens, the system contacts `/rest/rate-limits`. If the `grok-3` capacity is `>= 30`, it is automatically assigned to `PoolSuper` and given `Priority: 10`. Regular accounts fall back to `PoolBasic` with `Priority: 0`. This logic lives in `internal/token/quota.go`.
 - **Client API Keys**: Use the `sk-...` standard. The endpoint outputs are unmasked in CLI scripts so users can directly copy them. Both `Authorization: Bearer <key>` (OpenAI) and `x-api-key: <key>` (Anthropic) headers are natively supported to accommodate multi-platform clients.
-- **Admin CLI**: Do not manually `curl` the admin endpoints to manage tokens/keys. Use the provided interactive scripts:
-  - Linux/Mac: `./scripts/linux/grokpi_admin.sh`
-  - Windows: `.\scripts\windows\grokpi_admin.ps1`
+- **Admin CLI**: Do not manually `curl` the admin endpoints to manage tokens/keys. Use either:
+  - **Admin UI (browser)**: `http://127.0.0.1:8080/admin/access` (recommended)
+  - Linux/Mac CLI: `./scripts/linux/grokpi_admin.sh`
+  - Windows CLI: `.\scripts\windows\grokpi_admin.ps1`
 - **Admin Auth Checkers**: For fast troubleshooting of admin auth/session issues, use:
   - Linux/Mac: `./scripts/linux/grokpi_admin_check.sh`
   - Windows: `.\scripts\windows\grokpi_admin_check.ps1`
   These scripts only do `POST /admin/login` and `GET /admin/verify`, so they are the fastest way to distinguish wrong `app_key`, broken session handling, or a stale deploy.
 
 ## Source-of-truth commands
-- Full local build: `make build`.
-- Run: `make run` or `make dev`.
+- **Run (local)**: `docker compose up -d --build` (or `make docker-up`). Docker is the only supported deployment method.
+- **Run (VPS)**: `docker compose up -d --build` — identical to local; no `make build` needed (multi-stage build inside container).
 - Backend tests (CI-equivalent core): `go vet ./... && go test -race -count=1 ./...`.
 - Vulnerability check (CI runs this too): `go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...`.
 - Post-deploy smoke test: `make smoke BASE_URL=http://127.0.0.1:8080 APP_KEY=... API_KEY=...`.
 
 ## Critical gotchas
-- `Dockerfile.local` expects a prebuilt host binary at `bin/grokpi` (`COPY bin/grokpi ...`), so run `make build` before `docker compose up --build`.
+- `Dockerfile.local` uses **multi-stage build** — Go binary is built inside Docker. No `make build` needed on the host before `docker compose up --build`.
+- Local setup requires a `.env` file with `COMPOSE_FILE=docker-compose.yml:docker-compose.local.yml` so that `docker compose` auto-merges both files.
 - `make clean` removes `data/` in addition to build artifacts; do not run casually.
 
 ## Config/runtime behavior that is easy to miss

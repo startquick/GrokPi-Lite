@@ -1,4 +1,4 @@
-.PHONY: build run test clean dev smoke
+.PHONY: build run test clean dev smoke docker-up docker-down docker-logs docker-ps docker-restart docker-shell
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_TIME ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -36,3 +36,25 @@ smoke:
 
 clean:
 	rm -rf bin/ data/
+
+# ─── Docker Local (menggunakan .env → COMPOSE_FILE) ──────────────────────────
+# Pastikan sudah ada .env dengan COMPOSE_FILE=docker-compose.yml:docker-compose.local.yml
+# Lihat docs/deployment-checklist-lokal.md untuk setup awal.
+
+docker-up:
+	docker compose up -d --build
+
+docker-down:
+	docker compose down
+
+docker-logs:
+	docker compose logs -f grokpi
+
+docker-ps:
+	docker compose ps
+
+docker-restart:
+	docker compose restart grokpi
+
+docker-shell:
+	docker compose exec grokpi /bin/sh

@@ -119,14 +119,9 @@ mkdir -p data logs
 sudo chown -R 1000:1000 data logs
 ```
 
-## 6. Build dan Jalankan Container
+## 6. Jalankan Container
 
-1. Build binary host untuk `Dockerfile.local`.
-```bash
-make build
-```
-
-2. Jalankan service.
+1. Jalankan service (`--build` langsung trigger multi-stage build di dalam Docker).
 ```bash
 docker compose up -d --build
 ```
@@ -192,6 +187,32 @@ curl -I https://api.domainanda.com/health
 ```
 
 ## 9. Konfigurasi Admin dan API Key
+
+### Opsi A: Admin UI via Browser (Direkomendasikan)
+
+GrokPi menyediakan halaman admin berbasis web yang built-in. Setelah Caddy aktif, buka browser dan akses:
+
+```
+https://api.domainanda.com/admin/access
+```
+
+Atau jika belum ada domain (akses langsung dari VPS):
+
+```
+http://127.0.0.1:8080/admin/access
+```
+
+Login dengan `app_key` yang sudah kamu set di `config.toml`. Dari dashboard ini kamu bisa:
+- **Tokens** — import, lihat status, hapus, dan refresh token Grok SSO
+- **API Keys** — buat dan kelola client key `sk-...`
+- **Stats** — lihat quota, usage log, dan token pool
+- **Config** — edit runtime config tanpa restart
+- **Cache** — kelola cache file video/image
+
+> [!NOTE]
+> Admin UI di-*embed* langsung ke dalam binary, sehingga tersedia otomatis tanpa setup tambahan.
+
+### Opsi B: CLI Script (via SSH)
 
 1. Jalankan admin script.
 ```bash
@@ -290,8 +311,9 @@ Gunakan alur update yang tidak destruktif:
 ```bash
 cd ~/GrokPi-Lite
 git pull
-make build
 docker compose up -d --build
 ```
+
+`--build` otomatis rebuild image dengan kode terbaru — tidak perlu `make build` manual.
 
 Jika ada perubahan lokal penting pada `config.toml` atau file deploy lain, backup dulu dan selesaikan konflik Git secara manual.
