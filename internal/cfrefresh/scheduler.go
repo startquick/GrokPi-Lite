@@ -1,4 +1,4 @@
-package cfrefresh
+﻿package cfrefresh
 
 import (
 	"bytes"
@@ -78,7 +78,7 @@ func (s *Scheduler) TriggerRefresh() {
 		logging.Debug("cf_refresh: trigger ignored (cooldown/backoff)", "fails", fails, "backoff_sec", backoff.Seconds())
 		return
 	}
-	// Non-blocking send — if channel already has a pending trigger, skip.
+	// Non-blocking send â€” if channel already has a pending trigger, skip.
 	select {
 	case s.triggerCh <- struct{}{}:
 		logging.Info("cf_refresh: immediate refresh triggered (403 detected)")
@@ -93,7 +93,7 @@ func (s *Scheduler) run() {
 	// Immediate first refresh if enabled (matches Python behavior).
 	if s.isEnabled() {
 		logging.Info("cf_refresh: performing initial refresh",
-			"flaresolverr_url", s.runtime.Get().Proxy.FlareSolverrURL)
+			"instances", len(s.runtime.Get().Proxy.FlareSolverrURLs))
 		s.refreshOnce()
 	} else {
 		logging.Info("cf_refresh: disabled or FlareSolverr URL not set, skipping")
@@ -126,22 +126,21 @@ func (s *Scheduler) run() {
 
 func (s *Scheduler) refreshOnce() {
 	cfg := s.runtime.Get()
-	flareURL := cfg.Proxy.FlareSolverrURL
 	timeout := s.getTimeout()
 	proxyURL := cfg.Proxy.BaseProxyURL
 
 	s.lastAttempt.Store(time.Now().Unix())
 
 	logging.Info("cf_refresh: refreshing cf_clearance...",
-		"flaresolverr_url", flareURL, "timeout", timeout)
+		"instances", len(cfg.Proxy.FlareSolverrURLs), "timeout", timeout)
 
-	result, err := SolveCFChallenge(flareURL, timeout, proxyURL)
+	result, err := s.selectAndSolve(cfg.Proxy.FlareSolverrURLs, timeout, proxyURL)
 	if err != nil {
 		fails := s.consecutiveFails.Add(1)
 		logging.Error("cf_refresh: refresh failed", "error", err, "fails", fails)
 		
 		if fails == 3 {
-			s.sendTelegramAlert("🚨 *GrokPi Alert*\nFlareSolverr gagal melewati Cloudflare 3x berturut-turut.\nSolusi Bypass mungkin terhambat atau membutuhkan versi bot terbaru.")
+			s.sendTelegramAlert("ðŸš¨ *GrokPi Alert*\nFlareSolverr gagal melewati Cloudflare 3x berturut-turut.\nSolusi Bypass mungkin terhambat atau membutuhkan versi bot terbaru.")
 		}
 		return
 	}
@@ -185,7 +184,31 @@ func (s *Scheduler) refreshOnce() {
 
 func (s *Scheduler) isEnabled() bool {
 	cfg := s.runtime.Get()
-	return cfg != nil && cfg.Proxy.Enabled && cfg.Proxy.FlareSolverrURL != ""
+	return cfg != nil && cfg.Proxy.Enabled && len(cfg.Proxy.FlareSolverrURLs) > 0
+}
+
+// selectAndSolve tries each FlareSolverr URL in order, returning on first success.
+// If all URLs fail, returns the last error.
+func (s *Scheduler) selectAndSolve(urls []string, timeout int, proxyURL string) (*SolveResult, error) {
+	var lastErr error
+	for i, url := range urls {
+		if url == "" {
+			continue
+		}
+		logging.Info("cf_refresh: trying flaresolverr instance",
+			"url_index", i, "url", url)
+		result, err := SolveCFChallenge(url, timeout, proxyURL)
+		if err == nil {
+			return result, nil
+		}
+		logging.Warn("cf_refresh: instance failed, trying next",
+			"url_index", i, "url", url, "error", err)
+		lastErr = err
+	}
+	if lastErr != nil {
+		logging.Error("cf_refresh: all instances failed", "attempts", len(urls), "error", lastErr)
+	}
+	return nil, lastErr
 }
 
 func (s *Scheduler) getInterval() int {

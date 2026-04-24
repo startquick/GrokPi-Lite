@@ -51,6 +51,8 @@ type AppConfig struct {
 	ChatBodyLimit     int64 `toml:"chat_body_limit"`     // max body size for chat completions in bytes
 	AdminMaxFails     int   `toml:"admin_max_fails"`     // max auth failures before temporary IP lockout
 	AdminWindowSec    int   `toml:"admin_window_sec"`    // time window in seconds for counting admin auth failures
+	// Shutdown settings
+	ShutdownGracePeriodSec int `toml:"shutdown_grace_period_sec"` // seconds to wait for in-flight requests on shutdown
 }
 
 // ImageConfig contains image-generation behavior flags.
@@ -73,7 +75,8 @@ type ProxyConfig struct {
 	CFCookies          string `toml:"cf_cookies"`
 	SkipProxySSLVerify bool   `toml:"skip_proxy_ssl_verify"`
 	Enabled            bool   `toml:"enabled"`
-	FlareSolverrURL    string `toml:"flaresolverr_url"`
+	FlareSolverrURL    string `toml:"flaresolverr_url"`  // Deprecated: use FlareSolverrURLs
+	FlareSolverrURLs   []string `toml:"flaresolverr_urls"` // Multi-instance list; takes priority over FlareSolverrURL
 	RefreshInterval    int    `toml:"refresh_interval"`
 	Timeout            int    `toml:"timeout"`
 	CFClearance        string `toml:"cf_clearance"`
@@ -115,6 +118,12 @@ type TokenConfig struct {
 	// to classify a token as PoolSuper. Accounts returning a value below this threshold
 	// are classified as PoolBasic. Default: 100 (safely between observed free=60 and SuperGrok=140).
 	SuperQuotaThreshold int `toml:"super_quota_threshold"`
+	// Health probe settings
+	HealthProbeIntervalSec  int `toml:"health_probe_interval_sec"`  // seconds between full probe cycles
+	HealthProbeConcurrency  int `toml:"health_probe_concurrency"`   // max simultaneous probes
+	// Circuit breaker settings
+	CircuitBreakerFailThreshold       int `toml:"circuit_breaker_fail_threshold"`        // consecutive failures before opening
+	CircuitBreakerHalfOpenTimeoutSec  int `toml:"circuit_breaker_half_open_timeout_sec"` // seconds before half-open probe
 }
 
 // ApplyDBOverrides applies database config entries on top of file-based config.
@@ -197,6 +206,12 @@ func (c *Config) ApplyDBOverrides(kvs map[string]string) []string {
 			} else {
 				slog.Warn("config: invalid int override ignored", "key", k, "value", v, "error", err)
 			}
+		case "app.shutdown_grace_period_sec":
+			if n, err := strconv.Atoi(v); err == nil {
+				c.App.ShutdownGracePeriodSec = n
+			} else {
+				slog.Warn("config: invalid int override ignored", "key", k, "value", v, "error", err)
+			}
 		// Proxy overrides
 		case "proxy.base_proxy_url":
 			c.Proxy.BaseProxyURL = v
@@ -210,6 +225,10 @@ func (c *Config) ApplyDBOverrides(kvs map[string]string) []string {
 			c.Proxy.Enabled = v == "true"
 		case "proxy.flaresolverr_url":
 			c.Proxy.FlareSolverrURL = v
+			// Backward-compat: also populate FlareSolverrURLs if not already set via new key
+			if len(c.Proxy.FlareSolverrURLs) == 0 && v != "" {
+				c.Proxy.FlareSolverrURLs = []string{v}
+			}
 		case "proxy.refresh_interval":
 			if n, err := strconv.Atoi(v); err == nil {
 				c.Proxy.RefreshInterval = n
@@ -236,6 +255,16 @@ func (c *Config) ApplyDBOverrides(kvs map[string]string) []string {
 			c.Proxy.TelegramBotToken = v
 		case "proxy.telegram_chat_id":
 			c.Proxy.TelegramChatID = v
+		case "proxy.flaresolverr_urls":
+			if v != "" {
+				urls := splitTrimmed(v)
+				c.Proxy.FlareSolverrURLs = urls
+				if len(urls) > 0 {
+					c.Proxy.FlareSolverrURL = urls[0] // keep legacy field in sync
+				}
+			} else {
+				c.Proxy.FlareSolverrURLs = []string{}
+			}
 		// Retry overrides
 		case "retry.max_tokens":
 			if n, err := strconv.Atoi(v); err == nil {
@@ -391,6 +420,30 @@ func (c *Config) ApplyDBOverrides(kvs map[string]string) []string {
 			} else {
 				slog.Warn("config: invalid int override ignored", "key", k, "value", v, "error", err)
 			}
+		case "token.health_probe_interval_sec":
+			if n, err := strconv.Atoi(v); err == nil {
+				c.Token.HealthProbeIntervalSec = n
+			} else {
+				slog.Warn("config: invalid int override ignored", "key", k, "value", v, "error", err)
+			}
+		case "token.health_probe_concurrency":
+			if n, err := strconv.Atoi(v); err == nil {
+				c.Token.HealthProbeConcurrency = n
+			} else {
+				slog.Warn("config: invalid int override ignored", "key", k, "value", v, "error", err)
+			}
+		case "token.circuit_breaker_fail_threshold":
+			if n, err := strconv.Atoi(v); err == nil {
+				c.Token.CircuitBreakerFailThreshold = n
+			} else {
+				slog.Warn("config: invalid int override ignored", "key", k, "value", v, "error", err)
+			}
+		case "token.circuit_breaker_half_open_timeout_sec":
+			if n, err := strconv.Atoi(v); err == nil {
+				c.Token.CircuitBreakerHalfOpenTimeoutSec = n
+			} else {
+				slog.Warn("config: invalid int override ignored", "key", k, "value", v, "error", err)
+			}
 		default:
 			matched = false
 		}
@@ -428,6 +481,12 @@ func Load(path string) (*Config, error) {
 
 	if _, err := toml.DecodeFile(path, cfg); err != nil {
 		return nil, err
+	}
+
+	// Backward-compat shim: if FlareSolverrURLs is empty but old FlareSolverrURL is set,
+	// promote the single URL into the new slice field.
+	if len(cfg.Proxy.FlareSolverrURLs) == 0 && cfg.Proxy.FlareSolverrURL != "" {
+		cfg.Proxy.FlareSolverrURLs = []string{cfg.Proxy.FlareSolverrURL}
 	}
 
 	return cfg, nil

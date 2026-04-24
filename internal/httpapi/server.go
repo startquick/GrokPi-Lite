@@ -34,36 +34,38 @@ func notImplementedHandler(w http.ResponseWriter, _ *http.Request) {
 
 // Server holds HTTP server dependencies.
 type Server struct {
-	router          chi.Router
-	startTime       time.Time
-	chatProviders   []ChatProvider
-	appKey          string
-	version         string
-	cfg             *config.Config
-	runtime         *config.Runtime
-	tokenStore      TokenStoreInterface
-	tokenRefresher  TokenRefresher
-	tokenPoolSyncer TokenPoolSyncer
-	usageLogStore   UsageLogStoreInterface
-	apiKeyStore     APIKeyStoreInterface
-	cacheService    *cache.Service
-	configStore     *store.ConfigStore
+	router            chi.Router
+	startTime         time.Time
+	chatProviders     []ChatProvider
+	appKey            string
+	version           string
+	cfg               *config.Config
+	runtime           *config.Runtime
+	tokenStore        TokenStoreInterface
+	tokenRefresher    TokenRefresher
+	tokenPoolSyncer   TokenPoolSyncer
+	tokenHealthProber TokenHealthProber
+	usageLogStore     UsageLogStoreInterface
+	apiKeyStore       APIKeyStoreInterface
+	cacheService      *cache.Service
+	configStore       *store.ConfigStore
 }
 
 // ServerConfig holds server configuration.
 type ServerConfig struct {
-	AppKey          string
-	Version         string
-	Config          *config.Config
-	Runtime         *config.Runtime
-	ChatProviders   []ChatProvider
-	TokenStore      TokenStoreInterface
-	TokenRefresher  TokenRefresher
-	TokenPoolSyncer TokenPoolSyncer
-	UsageLogStore   UsageLogStoreInterface
-	APIKeyStore     APIKeyStoreInterface
-	CacheService    *cache.Service
-	ConfigStore     *store.ConfigStore
+	AppKey            string
+	Version           string
+	Config            *config.Config
+	Runtime           *config.Runtime
+	ChatProviders     []ChatProvider
+	TokenStore        TokenStoreInterface
+	TokenRefresher    TokenRefresher
+	TokenPoolSyncer   TokenPoolSyncer
+	TokenHealthProber TokenHealthProber
+	UsageLogStore     UsageLogStoreInterface
+	APIKeyStore       APIKeyStoreInterface
+	CacheService      *cache.Service
+	ConfigStore       *store.ConfigStore
 }
 
 // NewServer creates a new HTTP server with configured routes.
@@ -76,20 +78,21 @@ func NewServer(cfg *ServerConfig) *Server {
 		chatProviders = []ChatProvider{noopChatProvider{}}
 	}
 	s := &Server{
-		router:          chi.NewRouter(),
-		startTime:       time.Now(),
-		chatProviders:   chatProviders,
-		appKey:          cfg.AppKey,
-		version:         cfg.Version,
-		cfg:             cfg.Config,
-		runtime:         cfg.Runtime,
-		tokenStore:      cfg.TokenStore,
-		tokenRefresher:  cfg.TokenRefresher,
-		tokenPoolSyncer: cfg.TokenPoolSyncer,
-		usageLogStore:   cfg.UsageLogStore,
-		apiKeyStore:     cfg.APIKeyStore,
-		cacheService:    cfg.CacheService,
-		configStore:     cfg.ConfigStore,
+		router:            chi.NewRouter(),
+		startTime:         time.Now(),
+		chatProviders:     chatProviders,
+		appKey:            cfg.AppKey,
+		version:           cfg.Version,
+		cfg:               cfg.Config,
+		runtime:           cfg.Runtime,
+		tokenStore:        cfg.TokenStore,
+		tokenRefresher:    cfg.TokenRefresher,
+		tokenPoolSyncer:   cfg.TokenPoolSyncer,
+		tokenHealthProber: cfg.TokenHealthProber,
+		usageLogStore:     cfg.UsageLogStore,
+		apiKeyStore:       cfg.APIKeyStore,
+		cacheService:      cfg.CacheService,
+		configStore:       cfg.ConfigStore,
 	}
 	s.setupMiddleware()
 	s.setupRoutes()
@@ -238,6 +241,9 @@ func (s *Server) setupRoutes() {
 
 				if s.tokenRefresher != nil {
 					r.Post("/tokens/{id}/refresh", handleRefreshToken(s.tokenRefresher))
+				}
+				if s.tokenHealthProber != nil {
+					r.Get("/tokens/{id}/health", handleTokenHealth(s.tokenHealthProber))
 				}
 
 				// Stats endpoints (token-based)

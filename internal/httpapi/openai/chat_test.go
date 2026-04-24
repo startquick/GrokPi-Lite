@@ -208,6 +208,8 @@ func (m *chatMockTokenSvc) ReportSuccess(id uint)                  {}
 func (m *chatMockTokenSvc) ReportRateLimit(id uint, reason string) {}
 func (m *chatMockTokenSvc) ReportError(id uint, reason string)     {}
 func (m *chatMockTokenSvc) MarkExpired(id uint, reason string)     {}
+func (m *chatMockTokenSvc) MarkCircuitFailure(id uint)             {}
+func (m *chatMockTokenSvc) MarkCircuitSuccess(id uint)             {}
 
 type chatMockAPIKeyStore struct{}
 

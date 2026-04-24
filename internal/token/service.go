@@ -28,6 +28,7 @@ type TokenService struct {
 	store   TokenStore
 	manager *TokenManager
 	ticker  *CooldownTicker
+	prober  *HealthProber
 	baseURL string
 }
 
@@ -45,6 +46,7 @@ func NewTokenService(cfg *config.TokenConfig, store TokenStore, baseURL string) 
 		store:   store,
 		manager: mgr,
 		ticker:  NewCooldownTicker(mgr, interval),
+		prober:  NewHealthProber(mgr, cfg, baseURL),
 		baseURL: baseURL,
 	}
 }
@@ -136,6 +138,16 @@ func (s *TokenService) MarkExpired(id uint, reason string) {
 	s.manager.MarkExpired(id, reason)
 }
 
+// MarkCircuitFailure records a retryable failure on the token's circuit breaker.
+func (s *TokenService) MarkCircuitFailure(id uint) {
+	s.manager.MarkCircuitFailure(id)
+}
+
+// MarkCircuitSuccess records a successful request on the token's circuit breaker.
+func (s *TokenService) MarkCircuitSuccess(id uint) {
+	s.manager.MarkCircuitSuccess(id)
+}
+
 // FlushDirty persists all dirty tokens to the store.
 func (s *TokenService) FlushDirty(ctx context.Context) error {
 	dirty := s.manager.GetDirtyTokens()
@@ -189,11 +201,23 @@ func (s *TokenService) Stats() map[string]PoolStats {
 	return result
 }
 
-// StartTicker starts the cooldown ticker in a goroutine.
+// StartTicker starts the cooldown ticker and health prober in background goroutines.
 func (s *TokenService) StartTicker(ctx context.Context) {
 	safeGo("token_cooldown_ticker", func() {
 		s.ticker.Start(ctx)
 	})
+	if s.prober != nil {
+		s.prober.Start(ctx)
+	}
+}
+
+// ProbeToken performs an on-demand health probe on a single token.
+// Used by the admin health endpoint.
+func (s *TokenService) ProbeToken(ctx context.Context, id uint) (status string, chatQuota int, probeErr error) {
+	if s.prober == nil {
+		return "", 0, ErrTokenNotFound
+	}
+	return s.prober.ProbeToken(ctx, id)
 }
 
 // Manager returns the underlying token manager.

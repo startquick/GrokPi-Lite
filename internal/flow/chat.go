@@ -177,6 +177,9 @@ func (f *ChatFlow) executeWithRetry(ctx context.Context, req *ChatRequest, pool,
 				return
 			}
 
+			// Record circuit failure for retryable errors (not for non-recoverable).
+			f.tokenSvc.MarkCircuitFailure(currentToken.ID)
+
 			// Force swap token on cooling or ErrInvalidToken
 			if errors.Is(err, xai.ErrInvalidToken) || ShouldSwapToken(err, cfg) {
 				exclude[currentToken.ID] = struct{}{}
@@ -219,6 +222,7 @@ func (f *ChatFlow) executeWithRetry(ctx context.Context, req *ChatRequest, pool,
 				estimated = true
 			}
 			f.tokenSvc.ReportSuccess(currentToken.ID)
+			f.tokenSvc.MarkCircuitSuccess(currentToken.ID)
 			// Deduct quota only on success
 			cost := tkn.CostForModel(req.Model, f.tokenConfig())
 			if _, err := f.tokenSvc.Consume(currentToken.ID, tkn.CategoryChat, cost); err != nil {

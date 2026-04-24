@@ -16,20 +16,22 @@ var (
 
 // TokenManager manages token pools and state transitions.
 type TokenManager struct {
-	cfg    *config.TokenConfig
-	pools  map[string]*TokenPool
-	tokens map[uint]*store.Token // all tokens by ID for quick lookup
-	dirty  map[uint]struct{}     // tokens that need persistence
-	mu     sync.RWMutex
+	cfg      *config.TokenConfig
+	pools    map[string]*TokenPool
+	tokens   map[uint]*store.Token  // all tokens by ID for quick lookup
+	dirty    map[uint]struct{}      // tokens that need persistence
+	circuits map[uint]*CircuitBreaker // per-token circuit breakers (in-memory only)
+	mu       sync.RWMutex
 }
 
 // NewTokenManager creates a new token manager.
 func NewTokenManager(cfg *config.TokenConfig) *TokenManager {
 	return &TokenManager{
-		cfg:    cfg,
-		pools:  make(map[string]*TokenPool),
-		tokens: make(map[uint]*store.Token),
-		dirty:  make(map[uint]struct{}),
+		cfg:      cfg,
+		pools:    make(map[string]*TokenPool),
+		tokens:   make(map[uint]*store.Token),
+		dirty:    make(map[uint]struct{}),
+		circuits: make(map[uint]*CircuitBreaker),
 	}
 }
 
@@ -47,6 +49,19 @@ func (m *TokenManager) AddToken(token *store.Token) {
 	}
 	pool.Add(token)
 	m.tokens[token.ID] = token
+
+	// Initialize a fresh circuit breaker for this token (in-memory only, never persisted).
+	failThreshold := 3
+	halfOpenTimeout := 60
+	if m.cfg != nil {
+		if m.cfg.CircuitBreakerFailThreshold > 0 {
+			failThreshold = m.cfg.CircuitBreakerFailThreshold
+		}
+		if m.cfg.CircuitBreakerHalfOpenTimeoutSec > 0 {
+			halfOpenTimeout = m.cfg.CircuitBreakerHalfOpenTimeoutSec
+		}
+	}
+	m.circuits[token.ID] = newCircuitBreaker(failThreshold, halfOpenTimeout)
 }
 
 // RemoveToken removes a token from its pool.
@@ -63,6 +78,7 @@ func (m *TokenManager) RemoveToken(id uint) {
 	}
 	delete(m.tokens, id)
 	delete(m.dirty, id)
+	delete(m.circuits, id)
 }
 
 // GetToken returns a token by ID.
@@ -97,11 +113,52 @@ func (m *TokenManager) pick(poolName string, cat QuotaCategory, exclude map[uint
 		algo = AlgoHighQuotaFirst
 	}
 
-	if token := pool.SelectExcluding(algo, cat, exclude); token != nil {
+	// Build a combined exclusion set that includes tokens with open circuits.
+	// We avoid mutating the caller's map by lazily copying it on first modification.
+	combinedExclude := exclude
+	copied := false
+	for id, cb := range m.circuits {
+		if !cb.AllowRequest() {
+			if !copied {
+				// Shallow-copy the caller's map so we don't mutate it.
+				newExclude := make(map[uint]struct{}, len(exclude)+len(m.circuits))
+				for k, v := range exclude {
+					newExclude[k] = v
+				}
+				combinedExclude = newExclude
+				copied = true
+			}
+			combinedExclude[id] = struct{}{}
+		}
+	}
+
+	if token := pool.SelectExcluding(algo, cat, combinedExclude); token != nil {
 		return token, nil
 	}
 
 	return nil, ErrNoTokenAvailable
+}
+
+// MarkCircuitFailure records a failure on the circuit breaker for the given token.
+// Call this after a retryable upstream error. Safe to call with an unknown ID.
+func (m *TokenManager) MarkCircuitFailure(id uint) {
+	m.mu.RLock()
+	cb, ok := m.circuits[id]
+	m.mu.RUnlock()
+	if ok {
+		cb.RecordFailure()
+	}
+}
+
+// MarkCircuitSuccess records a successful request on the circuit breaker for the given token.
+// Call this after a successful upstream response. Safe to call with an unknown ID.
+func (m *TokenManager) MarkCircuitSuccess(id uint) {
+	m.mu.RLock()
+	cb, ok := m.circuits[id]
+	m.mu.RUnlock()
+	if ok {
+		cb.RecordSuccess()
+	}
 }
 
 // MarkCooling transitions a token to cooling state.

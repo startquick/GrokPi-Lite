@@ -44,6 +44,7 @@ func DefaultConfig() *Config {
 			ChatBodyLimit:          10 << 20, // 10MB
 			AdminMaxFails:          10,
 			AdminWindowSec:         300, // 5 minutes
+			ShutdownGracePeriodSec: 30,
 		},
 		Image: ImageConfig{
 			NSFW:                    false,
@@ -61,6 +62,7 @@ func DefaultConfig() *Config {
 			SkipProxySSLVerify: false,
 			Enabled:            false,
 			FlareSolverrURL:    "",
+			FlareSolverrURLs:   []string{},
 			RefreshInterval:    3600,
 			Timeout:            300,
 			CFClearance:        "",
@@ -106,6 +108,12 @@ func DefaultConfig() *Config {
 			QuotaRecoveryMode:   "auto",
 			SelectionAlgorithm:  "high_quota_first",
 			SuperQuotaThreshold: 100,
+			// Health probe defaults
+			HealthProbeIntervalSec: 300,
+			HealthProbeConcurrency: 3,
+			// Circuit breaker defaults
+			CircuitBreakerFailThreshold:      3,
+			CircuitBreakerHalfOpenTimeoutSec: 60,
 		},
 	}
 }

@@ -62,6 +62,9 @@ logs/
 
 # AI Assistant configs
 .opencode/
+.agent/
+openspec/
+AGENTS.md
 
 # Go
 .gocache/

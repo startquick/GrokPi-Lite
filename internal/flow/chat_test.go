@@ -104,6 +104,9 @@ func (m *mockTokenService) MarkExpired(id uint, reason string) {
 	m.expiredCalls = append(m.expiredCalls, id)
 }
 
+func (m *mockTokenService) MarkCircuitFailure(id uint) {}
+func (m *mockTokenService) MarkCircuitSuccess(id uint) {}
+
 // mockXAIClient implements xai.Client for testing.
 type mockXAIClient struct {
 	mu        sync.Mutex

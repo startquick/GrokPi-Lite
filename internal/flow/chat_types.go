@@ -33,6 +33,8 @@ type TokenServicer interface {
 	ReportRateLimit(id uint, reason string)
 	ReportError(id uint, reason string)
 	MarkExpired(id uint, reason string)
+	MarkCircuitFailure(id uint)
+	MarkCircuitSuccess(id uint)
 }
 
 // XAIClientFactory creates xai.Client instances for a given token.

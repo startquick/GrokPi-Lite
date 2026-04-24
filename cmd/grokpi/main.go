@@ -261,18 +261,19 @@ func main() {
 
 	// Create HTTP server
 	srv := httpapi.NewServer(&httpapi.ServerConfig{
-		AppKey:          runtimeCfg.Get().App.AppKey,
-		Version:         version,
-		Config:          runtimeCfg.Get(),
-		Runtime:         runtimeCfg,
-		ChatProviders:   []httpapi.ChatProvider{openaiHandler, anthropicHandler},
-		TokenStore:      tokenStore,
-		TokenRefresher:  tokenSvc,
-		TokenPoolSyncer: tokenSvc,
-		UsageLogStore:   usageLogStore,
-		APIKeyStore:     apiKeyStore,
-		CacheService:    cacheSvc,
-		ConfigStore:     configStore,
+		AppKey:            runtimeCfg.Get().App.AppKey,
+		Version:           version,
+		Config:            runtimeCfg.Get(),
+		Runtime:           runtimeCfg,
+		ChatProviders:     []httpapi.ChatProvider{openaiHandler, anthropicHandler},
+		TokenStore:        tokenStore,
+		TokenRefresher:    tokenSvc,
+		TokenPoolSyncer:   tokenSvc,
+		TokenHealthProber: tokenSvc,
+		UsageLogStore:     usageLogStore,
+		APIKeyStore:       apiKeyStore,
+		CacheService:      cacheSvc,
+		ConfigStore:       configStore,
 	})
 	addr := fmt.Sprintf("%s:%d", cfg.App.Host, cfg.App.Port)
 
@@ -325,7 +326,11 @@ func main() {
 	logging.Info("shutting down server...")
 
 	// Graceful shutdown: HTTP server first (stop accepting new requests)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	gracePeriod := time.Duration(cfg.App.ShutdownGracePeriodSec) * time.Second
+	if gracePeriod <= 0 {
+		gracePeriod = 30 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), gracePeriod)
 	defer cancel()
 
 	if err := httpServer.Shutdown(ctx); err != nil {
