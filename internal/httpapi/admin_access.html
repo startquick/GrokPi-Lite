@@ -799,6 +799,23 @@ tr:hover td { background-color: var(--bg-elevated); }
               <label>Cloudflare Timeout (s) <input id="cfg_cf_timeout" type="number"></label>
               <label>Auth Max Retries <input id="cfg_auth_retry" type="number"></label>
             </div>
+            <div style="margin: 20px 0 12px; display: flex; align-items: center; gap: 10px;">
+              <h3 style="margin: 0; font-size: 14px; font-weight: 500;">Outbound Proxy</h3>
+              <span id="proxyStatusBadge" class="badge">No Proxy</span>
+            </div>
+            <div class="form-grid" style="align-items: flex-start;">
+              <label>
+                Base Proxy URL
+                <input id="proxyBaseUrl" type="text" placeholder="http://user:pass@host:port or socks5://host:port">
+                <span id="proxyBaseUrlError" style="color: var(--accent-red); font-size: 12px; margin-top: 4px; display: none;"></span>
+              </label>
+              <label>
+                Asset Proxy URL
+                <input id="proxyAssetUrl" type="text" placeholder="Leave empty to use Base Proxy URL">
+                <span id="proxyAssetUrlError" style="color: var(--accent-red); font-size: 12px; margin-top: 4px; display: none;"></span>
+                <span style="color: var(--text-tertiary); font-size: 11px; margin-top: 2px;">If empty, asset downloads use Base Proxy URL</span>
+              </label>
+            </div>
             <h3 style="margin: 20px 0 12px; font-size: 14px; font-weight: 500;">Telegram Alerts</h3>
             <div class="form-grid">
               <label>Bot Token <input id="cfg_tg_token" type="password"></label>
@@ -1234,6 +1251,36 @@ async function refreshUsage() {
   } catch {}
 }
 
+function updateProxyBadge(baseUrl) {
+  const badge = document.getElementById('proxyStatusBadge');
+  if (baseUrl && baseUrl.trim() !== '') {
+    badge.textContent = 'Proxy Active';
+    badge.className = 'badge active';
+  } else {
+    badge.textContent = 'No Proxy';
+    badge.className = 'badge';
+  }
+}
+
+function validateProxyUrl(val, errId) {
+  const errEl = document.getElementById(errId);
+  if (!val || val.trim() === '') { errEl.style.display = 'none'; return true; }
+  try {
+    const u = new URL(val.trim());
+    if (!['http:', 'https:', 'socks5:'].includes(u.protocol)) {
+      errEl.textContent = 'Invalid scheme. Use http://, https://, or socks5://';
+      errEl.style.display = 'block';
+      return false;
+    }
+    errEl.style.display = 'none';
+    return true;
+  } catch {
+    errEl.textContent = 'Not a valid URL';
+    errEl.style.display = 'block';
+    return false;
+  }
+}
+
 async function refreshConfig() {
   const c = await req('/admin/config');
   document.getElementById('cfg_loglevel').value = c.log_level || 'info';
@@ -1242,6 +1289,10 @@ async function refreshConfig() {
   document.getElementById('cfg_tg_token').value = c.proxy?.telegram_bot_token || '';
   document.getElementById('cfg_tg_chat').value = c.proxy?.telegram_chat_id || '';
   document.getElementById('cfg_app_key').value = ''; // Don't show password
+  const baseUrl = c.proxy?.base_proxy_url || '';
+  document.getElementById('proxyBaseUrl').value = baseUrl;
+  document.getElementById('proxyAssetUrl').value = c.proxy?.asset_proxy_url || '';
+  updateProxyBadge(baseUrl);
 }
 
 async function refreshCache() {
@@ -1487,13 +1538,21 @@ document.getElementById('keyCreateForm').addEventListener('submit', async e => {
 
 document.getElementById('configForm').addEventListener('submit', async e => {
   e.preventDefault();
+  const baseUrl = document.getElementById('proxyBaseUrl').value.trim();
+  const assetUrl = document.getElementById('proxyAssetUrl').value.trim();
+  const validBase = validateProxyUrl(baseUrl, 'proxyBaseUrlError');
+  const validAsset = validateProxyUrl(assetUrl, 'proxyAssetUrlError');
+  if (!validBase || !validAsset) return;
+
   const body = {
     log_level: document.getElementById('cfg_loglevel').value,
     proxy: {
       cloudflare_timeout: parseInt(document.getElementById('cfg_cf_timeout').value, 10),
       max_auth_retries: parseInt(document.getElementById('cfg_auth_retry').value, 10),
       telegram_bot_token: document.getElementById('cfg_tg_token').value,
-      telegram_chat_id: document.getElementById('cfg_tg_chat').value
+      telegram_chat_id: document.getElementById('cfg_tg_chat').value,
+      base_proxy_url: baseUrl,
+      asset_proxy_url: assetUrl
     }
   };
   const ak = document.getElementById('cfg_app_key').value;
@@ -1503,6 +1562,7 @@ document.getElementById('configForm').addEventListener('submit', async e => {
   try {
     await req('/admin/config', { method:'PUT', body: JSON.stringify(body) });
     document.getElementById('cfg_app_key').value = '';
+    updateProxyBadge(baseUrl);
     toast('Config saved & overridden');
     refreshConfig();
   } catch(err) { flash(err.message, 'error'); }
