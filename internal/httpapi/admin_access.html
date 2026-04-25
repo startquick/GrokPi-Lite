@@ -1111,11 +1111,10 @@ async function refreshOverview() {
     const q = await req('/admin/stats/quota');
     // API returns { pools: [{pool, total_chat_quota, remaining_chat_quota, ...}] }
     const pools = q.pools || [];
-    let totalQuota = 0, remainingQuota = 0;
-    pools.forEach(p => { totalQuota += (p.total_chat_quota || 0); remainingQuota += (p.remaining_chat_quota || 0); });
-    document.getElementById('st_quota').textContent = fmtNum(remainingQuota) + ' / ' + fmtNum(totalQuota);
-    const pct = totalQuota > 0 ? Math.round(remainingQuota / totalQuota * 100) : 0;
-    document.getElementById('st_quota_usage').textContent = 'Remaining / Total (' + pct + '% remaining)';
+    let remainingQuota = 0;
+    (q.pools || []).forEach(p => { remainingQuota += (p.remaining_chat_quota || 0); });
+    document.getElementById('st_quota').textContent = fmtNum(remainingQuota);
+    document.getElementById('st_quota_usage').textContent = 'Queries remaining in current window';
   } catch {
     document.getElementById('st_quota').textContent = 'ERROR';
   }
