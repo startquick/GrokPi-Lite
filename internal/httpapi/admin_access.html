@@ -1113,8 +1113,7 @@ async function refreshOverview() {
     const pools = q.pools || [];
     let totalQuota = 0, remainingQuota = 0;
     pools.forEach(p => { totalQuota += (p.total_chat_quota || 0); remainingQuota += (p.remaining_chat_quota || 0); });
-    const usedQuota = totalQuota - remainingQuota;
-    document.getElementById('st_quota').textContent = fmtNum(usedQuota) + ' / ' + fmtNum(totalQuota);
+    document.getElementById('st_quota').textContent = fmtNum(remainingQuota) + ' / ' + fmtNum(totalQuota);
     const pct = totalQuota > 0 ? Math.round(remainingQuota / totalQuota * 100) : 0;
     document.getElementById('st_quota_usage').textContent = 'Remaining / Total (' + pct + '% remaining)';
   } catch {

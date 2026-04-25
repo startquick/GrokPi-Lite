@@ -109,7 +109,9 @@ func (m *TokenManager) SyncQuota(ctx context.Context, token *store.Token, baseUR
 	defer m.mu.Unlock()
 
 	token.ChatQuota = resp.RemainingQueries
-	token.InitialChatQuota = resp.RemainingQueries
+	if token.InitialChatQuota == 0 {
+		token.InitialChatQuota = resp.RemainingQueries
+	}
 
 	// Auto-assign Pool and Priority based on quota capacity.
 	// Premium accounts typically receive materially higher query limits.
