@@ -109,7 +109,7 @@ func (m *TokenManager) SyncQuota(ctx context.Context, token *store.Token, baseUR
 	defer m.mu.Unlock()
 
 	token.ChatQuota = resp.RemainingQueries
-	if token.InitialChatQuota == 0 {
+	if resp.RemainingQueries > token.InitialChatQuota {
 		token.InitialChatQuota = resp.RemainingQueries
 	}
 
